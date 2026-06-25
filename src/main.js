@@ -4,13 +4,15 @@ import { mountPlayer } from './ui/player.js';
 
 const app = document.getElementById('app');
 
-function showSetup() {
-  mountSetup(app, { onPlay: showPlayer, onReview: showReview });
+function showSetup(removedCount = 0) {
+  mountSetup(app, { onPlay: showPlayer, onReview: showReview, removedCount });
 }
 
 function showReview() {
-  mountReview(app, { onDone: showSetup });
+  mountReview(app, { onDone: (removed) => showSetup(removed) });
 }
+
+
 
 function showPlayer() {
   mountPlayer(app, { onExit: showSetup });

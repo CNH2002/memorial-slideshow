@@ -1,5 +1,6 @@
 import { processFiles, collectFromEntry } from '../files.js';
 import { state, addFiles, removeFile, reorderFile } from '../state.js';
+import { detectDuplicates } from '../duplicates.js';
 
 function countLabel(files) {
   const photos = files.filter(f => f.type === 'photo').length;
@@ -10,7 +11,7 @@ function countLabel(files) {
   return parts.join(' · ');
 }
 
-export function mountSetup(root, { onPlay, onReview }) {
+export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
   root.innerHTML = `
     <div id="screen-setup">
       <div class="setup-inner">
@@ -25,6 +26,14 @@ export function mountSetup(root, { onPlay, onReview }) {
 
         <p class="file-counts" id="file-counts"></p>
         <div class="media-grid" id="media-grid"></div>
+
+        <p class="removed-confirm" id="removed-confirm" hidden></p>
+
+        <div class="dup-notice" id="dup-notice" hidden>
+          <span class="dup-dot"></span>
+          <span id="dup-message"></span>
+          <button class="dup-review-btn" id="btn-review">Review</button>
+        </div>
 
         <div class="timing-row">
           <span class="timing-label">Time per photo</span>
@@ -43,11 +52,28 @@ export function mountSetup(root, { onPlay, onReview }) {
   const dropLabel = root.querySelector('#drop-primary');
   const countsEl  = root.querySelector('#file-counts');
   const gridEl    = root.querySelector('#media-grid');
+  const dupNotice = root.querySelector('#dup-notice');
+  const dupMsg    = root.querySelector('#dup-message');
   const slider    = root.querySelector('#timing-slider');
   const timingVal = root.querySelector('#timing-value');
   const playBtn   = root.querySelector('#play-btn');
 
+  const removedConfirm = root.querySelector('#removed-confirm');
+  if (removedCount > 0) {
+    removedConfirm.textContent = `${removedCount} photo${removedCount === 1 ? '' : 's'} removed.`;
+    removedConfirm.hidden = false;
+    setTimeout(() => { removedConfirm.hidden = true; }, 4000);
+  }
+
   let dragSrcIdx = null;
+
+  function renderDupNotice() {
+    const n = state.dupGroups.length;
+    dupNotice.hidden = n === 0;
+    if (n > 0) dupMsg.textContent = `${n} duplicate group${n === 1 ? '' : 's'} found`;
+  }
+
+  root.querySelector('#btn-review').addEventListener('click', onReview);
 
   function renderGrid() {
     gridEl.innerHTML = '';
@@ -123,6 +149,7 @@ export function mountSetup(root, { onPlay, onReview }) {
     slider.value           = d;
     screenEl.classList.toggle('has-files', hasFiles);
     renderGrid();
+    renderDupNotice();
   }
 
   async function handleFiles(rawFiles) {
@@ -142,6 +169,12 @@ export function mountSetup(root, { onPlay, onReview }) {
       dropLabel.textContent = 'Drop your photos and videos here';
     }
     refresh();
+
+    // Run dup detection in the background after every import
+    detectDuplicates(state.files).then(groups => {
+      state.dupGroups = groups;
+      renderDupNotice();
+    });
   }
 
   // Drop zone — file drop (ignore internal thumb drags)
