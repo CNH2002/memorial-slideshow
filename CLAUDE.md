@@ -73,3 +73,32 @@ below as each phase lands.
 
 ## Checkpoints
 - Phase 0–1 done: Vite + vite-plugin-singlefile + heic2any installed; full src/ structure; three navigable skeleton screens; dev server confirmed at localhost:5173.
+
+## Workflow
+
+When given a task:
+- Create a minimal plan if needed
+- Break into small steps when complexity requires it
+- Execute incrementally using todo.md if helpful
+- Update progress as work is completed
+
+## Core Principles
+
+- Prioritize correctness first
+- Prefer smallest effective change
+- Avoid unnecessary refactors or abstractions
+- Keep implementation simple and readable
+
+## Debugging
+
+- Follow code flow only when necessary to locate issues
+- Avoid over-analysis on simple problems
+
+## Mocking
+
+- If external dependencies are missing, use mock responses so UI and logic can still be developed
+
+## Output Style
+
+- Keep explanations concise
+- Focus on what changed and why only when relevant
