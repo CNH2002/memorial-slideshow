@@ -72,4 +72,4 @@ next. Keep "how-to" detail in `PRD.md`, not here. Add a one-line checkpoint
 below as each phase lands.
 
 ## Checkpoints
-<!-- e.g. Phase 1 done: Vite + structure + 3 screens, dev server OK -->
+- Phase 0–1 done: Vite + vite-plugin-singlefile + heic2any installed; full src/ structure; three navigable skeleton screens; dev server confirmed at localhost:5173.
