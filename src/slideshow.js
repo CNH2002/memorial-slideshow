@@ -1,3 +1,16 @@
+// Scale rotated video to fit the screen without clipping
+function applyVideoRotation(el, deg) {
+  if (deg === 90 || deg === 270) {
+    const scale = Math.min(
+      window.innerHeight / window.innerWidth,
+      window.innerWidth  / window.innerHeight
+    );
+    el.style.transform = `rotate(${deg}deg) scale(${scale})`;
+  } else {
+    el.style.transform = `rotate(${deg}deg)`;
+  }
+}
+
 export function createSlideshow(container, files, settings) {
   let currentIdx = 0;
   let timerId    = null;
@@ -23,6 +36,7 @@ export function createSlideshow(container, files, settings) {
       const img = document.createElement('img');
       img.src = file.url;
       img.alt = file.name;
+      // Photos: rotation baked into blob; no transform needed
       container.appendChild(img);
       timerId = setTimeout(() => {
         if (gen !== generation) return;
@@ -31,10 +45,11 @@ export function createSlideshow(container, files, settings) {
       }, settings.photoDuration * 1000);
     } else {
       const video = document.createElement('video');
-      video.src        = file.url;
-      video.muted      = true;
-      video.autoplay   = true;
+      video.src         = file.url;
+      video.muted       = true;
+      video.autoplay    = true;
       video.playsInline = true;
+      if (file.rotation) applyVideoRotation(video, file.rotation);
       const advance = () => {
         if (gen !== generation) return;
         currentIdx = (currentIdx + 1) % files.length;

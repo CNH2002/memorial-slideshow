@@ -67,11 +67,12 @@ export async function processFiles(rawFiles, onProgress) {
     }
 
     records.push({
-      id:   crypto.randomUUID(),
-      name: file.name,
-      type: mediaType,
+      id:       crypto.randomUUID(),
+      name:     file.name,
+      type:     mediaType,
       blob,
-      url:  URL.createObjectURL(blob),
+      url:      URL.createObjectURL(blob),
+      rotation: 0,
     });
 
     onProgress?.(i + 1, total);

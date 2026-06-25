@@ -1,5 +1,5 @@
 import { processFiles, collectFromEntry } from '../files.js';
-import { state, addFiles, removeFile, reorderFile } from '../state.js';
+import { state, addFiles, removeFile, reorderFile, rotateFile } from '../state.js';
 import { detectDuplicates } from '../duplicates.js';
 
 function countLabel(files) {
@@ -95,6 +95,23 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
         ph.className = 'video-thumb-placeholder';
         ph.textContent = '▶';
         thumb.appendChild(ph);
+      }
+
+      const rotBtn = document.createElement('button');
+      rotBtn.className = 'thumb-rotate';
+      rotBtn.setAttribute('aria-label', 'Rotate 90°');
+      rotBtn.textContent = '↺';
+      rotBtn.addEventListener('click', async e => {
+        e.stopPropagation();
+        await rotateFile(file.id);
+        refresh();
+      });
+      thumb.appendChild(rotBtn);
+
+      // Apply CSS rotation for videos (photos have baked blobs)
+      if (file.type === 'video' && file.rotation) {
+        thumb.querySelector('.video-thumb-placeholder').style.transform =
+          `rotate(${file.rotation}deg)`;
       }
 
       const btn = document.createElement('button');

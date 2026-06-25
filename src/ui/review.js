@@ -1,4 +1,4 @@
-import { state, removeFile } from '../state.js';
+import { state, removeFile, rotateFile } from '../state.js';
 
 export function mountReview(root, { onDone }) {
   const groups = state.dupGroups;
@@ -39,6 +39,17 @@ export function mountReview(root, { onDone }) {
       badge.className = 'review-badge';
       badge.textContent = 'Keep';
       thumb.appendChild(badge);
+
+      const rotBtn = document.createElement('button');
+      rotBtn.className = 'review-rotate-btn';
+      rotBtn.setAttribute('aria-label', 'Rotate 90°');
+      rotBtn.textContent = '↺';
+      rotBtn.addEventListener('click', async e => {
+        e.stopPropagation();
+        await rotateFile(file.id);
+        img.src = file.url; // photo url updated after bake
+      });
+      thumb.appendChild(rotBtn);
 
       thumb.addEventListener('click', () => {
         if (removeSets[gi].has(file.id)) {
