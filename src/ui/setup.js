@@ -147,6 +147,7 @@ export function mountSetup(root, { onPlay, onReview }) {
   // Drop zone — file drop (ignore internal thumb drags)
   dropZone.addEventListener('dragover', e => {
     if (dragSrcIdx !== null) return;
+    if (!e.dataTransfer.types.includes('Files')) return;
     e.preventDefault();
     dropZone.classList.add('drag-over');
   });
@@ -157,17 +158,29 @@ export function mountSetup(root, { onPlay, onReview }) {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
     if (dragSrcIdx !== null) return; // internal thumb drag
-    const items = Array.from(e.dataTransfer.items);
+
     const files = [];
-    for (const item of items) {
-      const entry = item.webkitGetAsEntry?.();
-      if (entry) {
-        files.push(...await collectFromEntry(entry));
-      } else {
-        const f = item.getAsFile();
-        if (f) files.push(f);
+
+    // Primary: items API — supports folders and webkitGetAsEntry
+    if (e.dataTransfer.items?.length) {
+      for (const item of Array.from(e.dataTransfer.items)) {
+        if (item.kind !== 'file') continue;
+        const entry = item.webkitGetAsEntry?.();
+        if (entry) {
+          files.push(...await collectFromEntry(entry));
+        } else {
+          const f = item.getAsFile();
+          if (f) files.push(f);
+        }
       }
     }
+
+    // Fallback: dataTransfer.files (macOS Photos app and similar sources
+    // that populate files but not items with usable entries)
+    if (files.length === 0 && e.dataTransfer.files?.length) {
+      files.push(...Array.from(e.dataTransfer.files));
+    }
+
     await handleFiles(files);
   });
 
