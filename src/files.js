@@ -1,4 +1,5 @@
 import heic2any from 'heic2any';
+import { state } from './state.js';
 
 const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']);
 const VIDEO_EXTS = new Set(['mp4', 'mov']);
@@ -28,6 +29,12 @@ async function orientNormalize(blob) {
   return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
 }
 
+async function fileHash(file) {
+  const buf    = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // Recursively collect File objects from a DataTransferEntry (file or directory).
 export async function collectFromEntry(entry) {
   if (entry.isFile) {
@@ -48,13 +55,24 @@ export async function collectFromEntry(entry) {
 }
 
 export async function processFiles(rawFiles, onProgress) {
-  const records = [];
-  const total   = rawFiles.length;
+  const records     = [];
+  const total       = rawFiles.length;
+  const seenHashes  = new Set(state.files.map(f => f.contentHash).filter(Boolean));
+  const batchHashes = new Set();
 
   for (let i = 0; i < total; i++) {
     const file = rawFiles[i];
     const mediaType = detectType(file);
-    if (!mediaType) continue;
+    if (!mediaType) { onProgress?.(i + 1, total); continue; }
+
+    const hash = await fileHash(file);
+    if (seenHashes.has(hash) || batchHashes.has(hash)) {
+      console.log(`[import] skip duplicate: ${file.name}`);
+      onProgress?.(i + 1, total);
+      continue;
+    }
+    batchHashes.add(hash);
+    seenHashes.add(hash);
 
     let blob = file;
 
@@ -67,12 +85,13 @@ export async function processFiles(rawFiles, onProgress) {
     }
 
     records.push({
-      id:       crypto.randomUUID(),
-      name:     file.name,
-      type:     mediaType,
+      id:          crypto.randomUUID(),
+      name:        file.name,
+      type:        mediaType,
       blob,
-      url:      URL.createObjectURL(blob),
-      rotation: 0,
+      url:         URL.createObjectURL(blob),
+      rotation:    0,
+      contentHash: hash,
     });
 
     onProgress?.(i + 1, total);

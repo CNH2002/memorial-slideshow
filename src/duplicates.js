@@ -68,3 +68,17 @@ export async function detectDuplicates(files, onProgress) {
 
   return [...groups.values()].filter(g => g.length > 1);
 }
+
+// For each duplicate group, keep the file with the largest blob (best quality proxy)
+// and return the IDs of the rest so the caller can remove them.
+export async function autoResolveDuplicates(files) {
+  const groups = await detectDuplicates(files);
+  const toRemove = [];
+  for (const group of groups) {
+    const winner = group.reduce((best, f) => f.blob.size > best.blob.size ? f : best);
+    for (const f of group) {
+      if (f.id !== winner.id) toRemove.push(f.id);
+    }
+  }
+  return toRemove;
+}
