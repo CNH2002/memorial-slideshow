@@ -1,6 +1,6 @@
 import { processFiles, collectFromEntry } from '../files.js';
 import { state, addFiles, removeFile, reorderFile, rotateFile } from '../state.js';
-import { autoResolveDuplicates } from '../duplicates.js';
+import { detectDuplicates } from '../duplicates.js';
 
 function countLabel(files) {
   const photos = files.filter(f => f.type === 'photo').length;
@@ -187,11 +187,10 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
     }
     refresh();
 
-    // Auto-resolve perceptual duplicates: keep largest blob, silently remove rest
-    autoResolveDuplicates(state.files).then(ids => {
-      if (!ids.length) return;
-      ids.forEach(id => removeFile(id));
-      refresh();
+    // Detect perceptual duplicates; populate state so notice + review screen appear
+    detectDuplicates(state.files).then(groups => {
+      state.dupGroups = groups;
+      renderDupNotice();
     });
   }
 
