@@ -19,14 +19,67 @@ export function detectType(file) {
   return null;
 }
 
+// Parse EXIF orientation tag from a JPEG ArrayBuffer. Returns 1–8 (1 = upright/no-op).
+// Needed because createImageBitmap({ imageOrientation:'from-image' }) is ignored in Safari.
+function readExifOrientation(buf) {
+  const view = new DataView(buf);
+  if (view.byteLength < 4 || view.getUint16(0) !== 0xFFD8) return 1;
+  let off = 2;
+  while (off + 4 <= view.byteLength) {
+    const marker = view.getUint16(off); off += 2;
+    const segLen = view.getUint16(off);
+    if (segLen < 2 || off + segLen > view.byteLength) break; // guard malformed segments
+    if (marker === 0xFFE1 && view.getUint32(off + 2) === 0x45786966) { // "Exif"
+      const t  = off + 8; // TIFF header starts after len(2) + "Exif"(4) + null(2)
+      if (t + 8 > view.byteLength) break;
+      const le  = view.getUint16(t) === 0x4949;
+      const ifd = t + view.getUint32(t + 4, le);
+      if (ifd + 2 > view.byteLength) break;
+      const n   = view.getUint16(ifd, le);
+      const max = Math.min(n, ((view.byteLength - (ifd + 2)) / 12) | 0);
+      for (let i = 0; i < max; i++) {
+        const e = ifd + 2 + i * 12;
+        if (view.getUint16(e, le) === 0x0112) // Orientation tag
+          return view.getUint16(e + 8, le);
+      }
+      break;
+    }
+    off += segLen;
+  }
+  return 1;
+}
+
+// Bake EXIF orientation into pixels via canvas transform. Works cross-browser (Safari ignores
+// the imageOrientation option on createImageBitmap). Also strips EXIF from the output blob.
 async function orientNormalize(blob) {
-  const bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+  const buf         = await blob.arrayBuffer();
+  const orientation = readExifOrientation(buf);
+  const bitmap      = await createImageBitmap(blob); // no imageOrientation — we apply it manually
+  const W = bitmap.width, H = bitmap.height;
+  const swap = orientation >= 5;
   const canvas = document.createElement('canvas');
-  canvas.width  = bitmap.width;
-  canvas.height = bitmap.height;
-  canvas.getContext('2d').drawImage(bitmap, 0, 0);
-  bitmap.close();
-  return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+  canvas.width  = swap ? H : W;
+  canvas.height = swap ? W : H;
+  const ctx = canvas.getContext('2d');
+  try {
+    // ctx.transform(a,b,c,d,e,f): x'=a·px+c·py+e  y'=b·px+d·py+f
+    switch (orientation) {
+      case 2: ctx.transform(-1,  0,  0,  1,  W, 0); break;
+      case 3: ctx.transform(-1,  0,  0, -1,  W, H); break;
+      case 4: ctx.transform( 1,  0,  0, -1,  0, H); break;
+      case 5: ctx.transform( 0,  1,  1,  0,  0, 0); break;
+      case 6: ctx.transform( 0,  1, -1,  0,  H, 0); break;
+      case 7: ctx.transform( 0, -1, -1,  0,  H, W); break;
+      case 8: ctx.transform( 0, -1,  1,  0,  0, W); break;
+      default: break;
+    }
+    ctx.drawImage(bitmap, 0, 0);
+  } finally {
+    bitmap.close();
+  }
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(b => b ? resolve(b) : reject(new Error('canvas.toBlob failed')), 'image/jpeg', 0.92)
+  );
 }
 
 async function fileHash(file) {
@@ -75,19 +128,22 @@ export async function processFiles(rawFiles, onProgress) {
     }
     seenHashes.add(hash);
 
-    let blob = file;
-    if (mediaType === 'photo') {
-      if (HEIC_EXTS.has(fileExt(file.name))) {
-        const r = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
-        blob = Array.isArray(r) ? r[0] : r;
+    try {
+      let blob = file;
+      if (mediaType === 'photo') {
+        if (HEIC_EXTS.has(fileExt(file.name))) {
+          const r = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+          blob = Array.isArray(r) ? r[0] : r;
+        }
+        blob = await orientNormalize(blob);
       }
-      blob = await orientNormalize(blob);
+      results[i] = {
+        id: crypto.randomUUID(), name: file.name, type: mediaType,
+        blob, url: URL.createObjectURL(blob), rotation: 0, contentHash: hash,
+      };
+    } catch (err) {
+      console.warn(`[import] skipped ${file.name}:`, err);
     }
-
-    results[i] = {
-      id: crypto.randomUUID(), name: file.name, type: mediaType,
-      blob, url: URL.createObjectURL(blob), rotation: 0, contentHash: hash,
-    };
     onProgress?.(++completed, total);
   }
 
