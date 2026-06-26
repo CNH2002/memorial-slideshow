@@ -1,31 +1,34 @@
 import { state, removeFile, rotateFile } from '../state.js';
 
 export function mountReview(root, { onDone }) {
-  const groups = state.dupGroups;
+  const groups = state.dupGroups; // Array<{ files: fileRecord[], reason: 'exact'|'similar' }>
 
   root.innerHTML = `
     <div id="screen-review">
       <div class="review-header">
-        <h2 class="review-title">Review duplicates</h2>
+        <h2 class="review-title">Review similar photos</h2>
         <button class="review-done-btn" id="review-done">Done</button>
       </div>
       <div class="review-groups" id="review-groups"></div>
     </div>
   `;
 
-  const groupsEl = root.querySelector('#review-groups');
-
-  // Per-group remove sets: groupIdx → Set of file ids marked for removal
+  const groupsEl  = root.querySelector('#review-groups');
   const removeSets = groups.map(() => new Set());
 
-  groups.forEach((group, gi) => {
+  groups.forEach(({ files, reason }, gi) => {
     const card = document.createElement('div');
     card.className = 'review-card';
+
+    const groupLabel = document.createElement('p');
+    groupLabel.className = 'review-group-label';
+    groupLabel.textContent = reason === 'exact' ? 'Near-exact duplicate' : 'Visually similar';
+    card.appendChild(groupLabel);
 
     const thumbsRow = document.createElement('div');
     thumbsRow.className = 'review-thumbs';
 
-    group.forEach(file => {
+    files.forEach(file => {
       const thumb = document.createElement('div');
       thumb.className = 'review-thumb';
       thumb.dataset.id = file.id;
@@ -47,7 +50,7 @@ export function mountReview(root, { onDone }) {
       rotBtn.addEventListener('click', async e => {
         e.stopPropagation();
         await rotateFile(file.id);
-        img.src = file.url; // photo url updated after bake
+        img.src = file.url;
       });
       thumb.appendChild(rotBtn);
 
@@ -57,7 +60,7 @@ export function mountReview(root, { onDone }) {
           thumb.classList.remove('removing');
           badge.textContent = 'Keep';
         } else {
-          if (group.length - removeSets[gi].size <= 1) return; // must keep one
+          if (files.length - removeSets[gi].size <= 1) return; // must keep one
           removeSets[gi].add(file.id);
           thumb.classList.add('removing');
           badge.textContent = 'Remove';

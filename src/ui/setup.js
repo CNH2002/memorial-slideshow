@@ -70,7 +70,7 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
   function renderDupNotice() {
     const n = state.dupGroups.length;
     dupNotice.hidden = n === 0;
-    if (n > 0) dupMsg.textContent = `${n} duplicate group${n === 1 ? '' : 's'} found`;
+    if (n > 0) dupMsg.textContent = `${n} group${n === 1 ? '' : 's'} of similar photos found`;
   }
 
   root.querySelector('#btn-review').addEventListener('click', onReview);

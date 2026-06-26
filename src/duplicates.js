@@ -1,20 +1,17 @@
-const THRESHOLD = 10; // max Hamming distance to consider "same" image
+const HAMMING_THRESHOLD = 10;   // dHash bits different → near-exact
+const COSINE_THRESHOLD  = 0.92; // color histogram cosine → similar burst
 
 async function dhash(blob) {
   const bmp = await createImageBitmap(blob, {
-    resizeWidth: 9,
-    resizeHeight: 8,
-    resizeQuality: 'pixelated',
+    resizeWidth: 9, resizeHeight: 8, resizeQuality: 'pixelated',
   });
   const canvas = document.createElement('canvas');
-  canvas.width  = 9;
-  canvas.height = 8;
+  canvas.width = 9; canvas.height = 8;
   canvas.getContext('2d').drawImage(bmp, 0, 0, 9, 8);
   bmp.close();
 
   const { data } = canvas.getContext('2d').getImageData(0, 0, 9, 8);
   const hash = new Uint8Array(8);
-
   for (let row = 0; row < 8; row++) {
     let byte = 0;
     for (let col = 0; col < 8; col++) {
@@ -38,43 +35,91 @@ function hammingDistance(a, b) {
   return dist;
 }
 
+// 64-bin RGB color histogram — shift-invariant, catches burst shots with camera motion
+async function colorHistogram(blob) {
+  const SIZE = 64;
+  const bmp  = await createImageBitmap(blob, { resizeWidth: SIZE, resizeHeight: SIZE, resizeQuality: 'pixelated' });
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = SIZE;
+  canvas.getContext('2d').drawImage(bmp, 0, 0, SIZE, SIZE);
+  bmp.close();
+
+  const { data } = canvas.getContext('2d').getImageData(0, 0, SIZE, SIZE);
+  const BINS = 64;
+  const hist = new Float32Array(BINS * 3);
+  const step = 256 / BINS;
+
+  for (let i = 0; i < data.length; i += 4) {
+    hist[Math.floor(data[i]   / step)]          += 1;
+    hist[Math.floor(data[i+1] / step) + BINS]   += 1;
+    hist[Math.floor(data[i+2] / step) + BINS*2] += 1;
+  }
+
+  let mag = 0;
+  for (let k = 0; k < hist.length; k++) mag += hist[k] ** 2;
+  mag = Math.sqrt(mag) || 1;
+  for (let k = 0; k < hist.length; k++) hist[k] /= mag;
+  return hist;
+}
+
+function cosineSim(a, b) {
+  let dot = 0;
+  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
+  return dot; // pre-normalized
+}
+
+// Groups shape: Array<{ files: fileRecord[], reason: 'exact' | 'similar' }>
 export async function detectDuplicates(files, onProgress) {
   const photos = files.filter(f => f.type === 'photo');
   if (photos.length < 2) return [];
 
-  const hashes = [];
+  const hashes = [], hists = [];
   for (let i = 0; i < photos.length; i++) {
     hashes.push(await dhash(photos[i].blob));
+    hists.push(await colorHistogram(photos[i].blob));
     onProgress?.(i + 1, photos.length);
   }
 
-  // Union-find
   const parent = photos.map((_, i) => i);
   function find(i) { return parent[i] === i ? i : (parent[i] = find(parent[i])); }
   function union(i, j) { parent[find(i)] = find(j); }
 
+  const pairReason = new Map();
   for (let i = 0; i < photos.length; i++) {
     for (let j = i + 1; j < photos.length; j++) {
-      if (hammingDistance(hashes[i], hashes[j]) <= THRESHOLD) union(i, j);
+      if (hammingDistance(hashes[i], hashes[j]) <= HAMMING_THRESHOLD) {
+        union(i, j);
+        pairReason.set(`${i}-${j}`, 'exact');
+      } else if (cosineSim(hists[i], hists[j]) >= COSINE_THRESHOLD) {
+        union(i, j);
+        pairReason.set(`${i}-${j}`, 'similar');
+      }
     }
   }
 
   const groups = new Map();
   for (let i = 0; i < photos.length; i++) {
     const root = find(i);
-    if (!groups.has(root)) groups.set(root, []);
-    groups.get(root).push(photos[i]);
+    if (!groups.has(root)) groups.set(root, { files: [], reason: 'exact' });
+    groups.get(root).files.push(photos[i]);
   }
+  // Any 'similar' edge in a group downgrades the whole group's reason
+  pairReason.forEach((reason, key) => {
+    if (reason === 'similar') {
+      const root = find(parseInt(key)); // parseInt("i-j") === i
+      if (groups.has(root)) groups.get(root).reason = 'similar';
+    }
+  });
 
-  return [...groups.values()].filter(g => g.length > 1);
+  return [...groups.values()]
+    .filter(g => g.files.length > 1)
+    .map(g => ({ files: g.files, reason: g.reason }));
 }
 
-// For each duplicate group, keep the file with the largest blob (best quality proxy)
-// and return the IDs of the rest so the caller can remove them.
 export async function autoResolveDuplicates(files) {
   const groups = await detectDuplicates(files);
   const toRemove = [];
-  for (const group of groups) {
+  for (const { files: group } of groups) {
     const winner = group.reduce((best, f) => f.blob.size > best.blob.size ? f : best);
     for (const f of group) {
       if (f.id !== winner.id) toRemove.push(f.id);
