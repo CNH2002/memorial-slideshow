@@ -1,6 +1,6 @@
 import { processFiles, collectFromEntry } from '../files.js';
 import { state, addFiles, removeFile, reorderFile, rotateFile } from '../state.js';
-import { detectDuplicates } from '../duplicates.js';
+import { detectDuplicates, detectExactGroups } from '../duplicates.js';
 
 function countLabel(files) {
   const photos = files.filter(f => f.type === 'photo').length;
@@ -214,6 +214,23 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
       dropLabel.textContent = 'Drop your photos and videos here';
     }
     refresh();
+
+    // Auto-remove near-exact duplicates silently (no user input needed for structurally identical photos)
+    const exactGroups = await detectExactGroups(state.files);
+    let autoRemoved = 0;
+    for (const group of exactGroups) {
+      const best = group.reduce((a, b) => a.blob.size > b.blob.size ? a : b);
+      for (const f of group) {
+        if (f.id !== best.id) { removeFile(f.id); autoRemoved++; }
+      }
+    }
+    if (autoRemoved > 0) {
+      refresh();
+      removedConfirm.textContent = `${autoRemoved} near-identical photo${autoRemoved === 1 ? '' : 's'} removed automatically.`;
+      removedConfirm.hidden = false;
+      setTimeout(() => { removedConfirm.hidden = true; }, 5000);
+    }
+
     runDetection();
   }
 

@@ -1,5 +1,5 @@
-const HAMMING_EXACT    = 10; // bits different → near-exact duplicate
-const HAMMING_SIMILAR  = 25; // structural ceiling for burst/angle-shift tier
+const HAMMING_EXACT    = 10; // bits different → near-exact duplicate (auto-removed)
+const HAMMING_SIMILAR  = 18; // structural ceiling for similar tier (was 25 — 19-25 range caused same-room false positives)
 const COSINE_SIMILAR   = 0.92; // color histogram floor — AND with hamming, not OR
 
 async function dhash(blob) {
@@ -69,6 +69,41 @@ function cosineSim(a, b) {
   return dot; // pre-normalized
 }
 
+// Fast exact-only pass (dHash only, no histogram). Used for silent auto-removal during import.
+// Returns Array<fileRecord[]> — each inner array is a group of near-identical photos.
+export async function detectExactGroups(files, onProgress) {
+  const photos = files.filter(f => f.type === 'photo');
+  if (photos.length < 2) return [];
+
+  const hashes = [];
+  for (let i = 0; i < photos.length; i++) {
+    try { hashes.push(await dhash(photos[i].blob)); }
+    catch (err) { console.warn('[duplicates] skipped', photos[i].name, err); hashes.push(null); }
+    onProgress?.(i + 1, photos.length);
+  }
+
+  const parent = photos.map((_, i) => i);
+  function find(i) { return parent[i] === i ? i : (parent[i] = find(parent[i])); }
+  function union(i, j) { parent[find(i)] = find(j); }
+
+  for (let i = 0; i < photos.length; i++) {
+    if (!hashes[i]) continue;
+    for (let j = i + 1; j < photos.length; j++) {
+      if (!hashes[j]) continue;
+      if (hammingDistance(hashes[i], hashes[j]) <= HAMMING_EXACT) union(i, j);
+    }
+  }
+
+  const groups = new Map();
+  for (let i = 0; i < photos.length; i++) {
+    const root = find(i);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(photos[i]);
+  }
+
+  return [...groups.values()].filter(g => g.length > 1);
+}
+
 // Groups shape: Array<{ files: fileRecord[], reason: 'exact' | 'similar' }>
 export async function detectDuplicates(files, onProgress) {
   const photos = files.filter(f => f.type === 'photo');
@@ -129,9 +164,9 @@ export async function detectDuplicates(files, onProgress) {
 }
 
 export async function autoResolveDuplicates(files) {
-  const groups = await detectDuplicates(files);
+  const groups = await detectExactGroups(files);
   const toRemove = [];
-  for (const { files: group } of groups) {
+  for (const group of groups) {
     const winner = group.reduce((best, f) => f.blob.size > best.blob.size ? f : best);
     for (const f of group) {
       if (f.id !== winner.id) toRemove.push(f.id);
