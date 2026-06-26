@@ -49,8 +49,13 @@ export function mountReview(root, { onDone }) {
       rotBtn.textContent = '↺';
       rotBtn.addEventListener('click', async e => {
         e.stopPropagation();
-        await rotateFile(file.id);
-        img.src = file.url;
+        try {
+          await rotateFile(file.id);
+          img.src = '';        // force browser to drop cached frame
+          img.src = file.url;
+        } catch (err) {
+          console.error('[rotate]', err);
+        }
       });
       thumb.appendChild(rotBtn);
 

@@ -380,12 +380,12 @@ body {
 }
 
 .review-thumbs {
-  display: flex;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
 }
 
 .review-thumb {
-  flex: 1;
   position: relative;
   border-radius: var(--radius);
   overflow: hidden;

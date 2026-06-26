@@ -38,7 +38,9 @@ async function bakeRotation(blob) {
   ctx.rotate(Math.PI / 2);
   ctx.drawImage(bmp, -bmp.width / 2, -bmp.height / 2);
   bmp.close();
-  return new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.92));
+  return new Promise((res, rej) =>
+    canvas.toBlob(b => b ? res(b) : rej(new Error('bakeRotation: toBlob returned null')), 'image/jpeg', 0.92)
+  );
 }
 
 export async function rotateFile(id) {
