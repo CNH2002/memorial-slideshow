@@ -1,5 +1,6 @@
-const HAMMING_THRESHOLD = 10;   // dHash bits different → near-exact
-const COSINE_THRESHOLD  = 0.92; // color histogram cosine → similar burst
+const HAMMING_EXACT    = 10; // bits different → near-exact duplicate
+const HAMMING_SIMILAR  = 25; // structural ceiling for burst/angle-shift tier
+const COSINE_SIMILAR   = 0.95; // color histogram floor — AND with hamming, not OR
 
 async function dhash(blob) {
   const bmp = await createImageBitmap(blob, {
@@ -87,10 +88,13 @@ export async function detectDuplicates(files, onProgress) {
   const pairReason = new Map();
   for (let i = 0; i < photos.length; i++) {
     for (let j = i + 1; j < photos.length; j++) {
-      if (hammingDistance(hashes[i], hashes[j]) <= HAMMING_THRESHOLD) {
+      const hamming = hammingDistance(hashes[i], hashes[j]);
+      if (hamming <= HAMMING_EXACT) {
         union(i, j);
         pairReason.set(`${i}-${j}`, 'exact');
-      } else if (cosineSim(hists[i], hists[j]) >= COSINE_THRESHOLD) {
+      } else if (hamming <= HAMMING_SIMILAR && cosineSim(hists[i], hists[j]) >= COSINE_SIMILAR) {
+        // Require BOTH structural closeness AND near-identical color distribution.
+        // OR-only on cosine collapses all same-room photos into one group via union-find.
         union(i, j);
         pairReason.set(`${i}-${j}`, 'similar');
       }

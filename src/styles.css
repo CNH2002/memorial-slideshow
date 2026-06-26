@@ -365,18 +365,25 @@ body {
 .review-done-btn:hover { opacity: 0.88; }
 
 .review-groups {
-  max-width: 780px;
+  max-width: 860px;
   width: 100%;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: 0;
 }
 
 .review-card {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  padding-top: 2rem;
+  border-top: 1px solid #1e1c1a;
+}
+
+.review-card:first-child {
+  padding-top: 0;
+  border-top: none;
 }
 
 .review-thumbs {
