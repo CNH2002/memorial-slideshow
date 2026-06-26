@@ -55,47 +55,47 @@ export async function collectFromEntry(entry) {
 }
 
 export async function processFiles(rawFiles, onProgress) {
-  const records     = [];
-  const total       = rawFiles.length;
-  const seenHashes  = new Set(state.files.map(f => f.contentHash).filter(Boolean));
-  const batchHashes = new Set();
+  const total      = rawFiles.length;
+  let   completed  = 0;
+  // Shared across workers — safe because JS is single-threaded: the sync
+  // has()/add() pair between awaits cannot interleave with another worker.
+  const seenHashes = new Set(state.files.map(f => f.contentHash).filter(Boolean));
+  const results    = new Array(total).fill(null); // preserves drop order
 
-  for (let i = 0; i < total; i++) {
+  async function processOne(i) {
     const file = rawFiles[i];
     const mediaType = detectType(file);
-    if (!mediaType) { onProgress?.(i + 1, total); continue; }
+    if (!mediaType) { onProgress?.(++completed, total); return; }
 
     const hash = await fileHash(file);
-    if (seenHashes.has(hash) || batchHashes.has(hash)) {
+    if (seenHashes.has(hash)) {
       console.log(`[import] skip duplicate: ${file.name}`);
-      onProgress?.(i + 1, total);
-      continue;
+      onProgress?.(++completed, total);
+      return;
     }
-    batchHashes.add(hash);
     seenHashes.add(hash);
 
     let blob = file;
-
     if (mediaType === 'photo') {
       if (HEIC_EXTS.has(fileExt(file.name))) {
-        const result = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
-        blob = Array.isArray(result) ? result[0] : result;
+        const r = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+        blob = Array.isArray(r) ? r[0] : r;
       }
       blob = await orientNormalize(blob);
     }
 
-    records.push({
-      id:          crypto.randomUUID(),
-      name:        file.name,
-      type:        mediaType,
-      blob,
-      url:         URL.createObjectURL(blob),
-      rotation:    0,
-      contentHash: hash,
-    });
-
-    onProgress?.(i + 1, total);
+    results[i] = {
+      id: crypto.randomUUID(), name: file.name, type: mediaType,
+      blob, url: URL.createObjectURL(blob), rotation: 0, contentHash: hash,
+    };
+    onProgress?.(++completed, total);
   }
 
-  return records;
+  // 4 concurrent workers drain a shared index counter
+  let idx = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (idx < total) await processOne(idx++);
+  }));
+
+  return results.filter(Boolean);
 }

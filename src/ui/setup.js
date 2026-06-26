@@ -86,8 +86,9 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
 
       if (file.type === 'photo') {
         const img = document.createElement('img');
-        img.src = file.url;
-        img.alt = file.name;
+        img.src     = file.url;
+        img.alt     = file.name;
+        img.loading = 'lazy';
         img.draggable = false;
         thumb.appendChild(img);
       } else {
@@ -209,31 +210,34 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
     dropZone.classList.remove('drag-over');
     if (dragSrcIdx !== null) return; // internal thumb drag
 
-    const files = [];
-
-    // Primary: items API with webkitGetAsEntry for folder support.
-    // Per-item try/catch so a failing entry (e.g. Photos app temp files not
-    // yet flushed to disk) falls back to getAsFile() rather than aborting.
+    // Snapshot ALL item refs synchronously — DataTransferItems go null after the
+    // first await, so getAsFile()/webkitGetAsEntry() must be called here.
+    const itemRefs = [];
     if (e.dataTransfer.items?.length) {
       for (const item of Array.from(e.dataTransfer.items)) {
         if (item.kind !== 'file') continue;
-        const entry = item.webkitGetAsEntry?.();
-        if (entry) {
-          try {
-            files.push(...await collectFromEntry(entry));
-          } catch {
-            const f = item.getAsFile();
-            if (f) files.push(f);
-          }
-        } else {
-          const f = item.getAsFile();
-          if (f) files.push(f);
+        itemRefs.push({
+          entry: item.webkitGetAsEntry?.() || null,
+          file:  item.getAsFile() || null,
+        });
+      }
+    }
+
+    // Resolve entries asynchronously (FileSystemEntry objects stay valid after await)
+    const files = [];
+    for (const { entry, file } of itemRefs) {
+      if (entry) {
+        try {
+          files.push(...await collectFromEntry(entry));
+        } catch {
+          if (file) files.push(file);
         }
+      } else if (file) {
+        files.push(file);
       }
     }
 
     // Fallback: dataTransfer.files — macOS Photos app multi-select drag
-    // populates this even when items entries are unusable.
     if (files.length === 0 && e.dataTransfer.files?.length) {
       files.push(...Array.from(e.dataTransfer.files));
     }
