@@ -502,6 +502,11 @@ body {
   opacity: 1;
 }
 
+.review-group-actions {
+  display: flex;
+  gap: 1.25rem;
+}
+
 .keep-all-btn {
   background: none;
   border: none;
@@ -514,6 +519,8 @@ body {
 }
 
 .keep-all-btn:hover { color: var(--text); }
+
+.remove-all-btn:hover { color: #c84040; }
 
 /* ── Player screen ────────────────────────────────────── */
 

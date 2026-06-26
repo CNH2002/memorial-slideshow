@@ -77,7 +77,6 @@ export function mountReview(root, { onDone }) {
           badge.className = 'review-badge keep';
           badge.textContent = 'Keep';
         } else {
-          if (files.length - removeSets[gi].size <= 1) return;
           removeSets[gi].add(file.id);
           thumb.classList.add('removing');
           badge.className = 'review-badge remove';
@@ -91,9 +90,12 @@ export function mountReview(root, { onDone }) {
 
     card.appendChild(thumbsRow);
 
+    const groupActions = document.createElement('div');
+    groupActions.className = 'review-group-actions';
+
     const keepAllBtn = document.createElement('button');
     keepAllBtn.className = 'keep-all-btn';
-    keepAllBtn.textContent = 'Keep all in this group';
+    keepAllBtn.textContent = 'Keep all';
     keepAllBtn.addEventListener('click', () => {
       removeSets[gi].clear();
       card.querySelectorAll('.review-thumb').forEach(t => {
@@ -104,7 +106,27 @@ export function mountReview(root, { onDone }) {
       });
       updateDoneBtn();
     });
-    card.appendChild(keepAllBtn);
+    groupActions.appendChild(keepAllBtn);
+
+    const removeAllBtn = document.createElement('button');
+    removeAllBtn.className = 'keep-all-btn remove-all-btn';
+    removeAllBtn.textContent = 'Remove all';
+    removeAllBtn.addEventListener('click', () => {
+      files.forEach(f => {
+        removeSets[gi].add(f.id);
+        const t = card.querySelector(`[data-id="${f.id}"]`);
+        if (t) {
+          t.classList.add('removing');
+          const b = t.querySelector('.review-badge');
+          b.className = 'review-badge remove';
+          b.textContent = 'Remove';
+        }
+      });
+      updateDoneBtn();
+    });
+    groupActions.appendChild(removeAllBtn);
+
+    card.appendChild(groupActions);
 
     groupsEl.appendChild(card);
   });

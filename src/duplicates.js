@@ -1,6 +1,7 @@
 const HAMMING_EXACT    = 10; // bits different → near-exact duplicate (auto-removed)
 const HAMMING_SIMILAR  = 18; // structural ceiling for similar tier (was 25 — 19-25 range caused same-room false positives)
-const COSINE_SIMILAR   = 0.92; // color histogram floor — AND with hamming, not OR
+const COSINE_SIMILAR   = 0.97; // was 0.92 — global histograms reach 0.92 by accident (shared skin tones + dark clothing);
+                                // genuine same-scene pairs score 0.97–1.0; false positives score 0.88–0.95
 
 async function dhash(blob) {
   const bmp = await createImageBitmap(blob, {
