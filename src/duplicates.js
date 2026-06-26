@@ -1,6 +1,6 @@
 const HAMMING_EXACT    = 10; // bits different → near-exact duplicate
 const HAMMING_SIMILAR  = 25; // structural ceiling for burst/angle-shift tier
-const COSINE_SIMILAR   = 0.95; // color histogram floor — AND with hamming, not OR
+const COSINE_SIMILAR   = 0.92; // color histogram floor — AND with hamming, not OR
 
 async function dhash(blob) {
   const bmp = await createImageBitmap(blob, {
@@ -76,8 +76,14 @@ export async function detectDuplicates(files, onProgress) {
 
   const hashes = [], hists = [];
   for (let i = 0; i < photos.length; i++) {
-    hashes.push(await dhash(photos[i].blob));
-    hists.push(await colorHistogram(photos[i].blob));
+    try {
+      hashes.push(await dhash(photos[i].blob));
+      hists.push(await colorHistogram(photos[i].blob));
+    } catch (err) {
+      console.warn('[duplicates] skipped', photos[i].name, err);
+      hashes.push(null);
+      hists.push(null);
+    }
     onProgress?.(i + 1, photos.length);
   }
 
@@ -87,7 +93,9 @@ export async function detectDuplicates(files, onProgress) {
 
   const pairReason = new Map();
   for (let i = 0; i < photos.length; i++) {
+    if (!hashes[i] || !hists[i]) continue;
     for (let j = i + 1; j < photos.length; j++) {
+      if (!hashes[j] || !hists[j]) continue;
       const hamming = hammingDistance(hashes[i], hashes[j]);
       if (hamming <= HAMMING_EXACT) {
         union(i, j);

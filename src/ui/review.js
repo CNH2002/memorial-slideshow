@@ -6,7 +6,10 @@ export function mountReview(root, { onDone }) {
   root.innerHTML = `
     <div id="screen-review">
       <div class="review-header">
-        <h2 class="review-title">Review similar photos</h2>
+        <div class="review-header-text">
+          <h2 class="review-title">Review similar photos</h2>
+          <p class="review-subtitle">Click a photo to mark it for removal. At least one per group will always be kept.</p>
+        </div>
         <button class="review-done-btn" id="review-done">Done</button>
       </div>
       <div class="review-groups" id="review-groups"></div>
@@ -14,16 +17,24 @@ export function mountReview(root, { onDone }) {
   `;
 
   const groupsEl  = root.querySelector('#review-groups');
+  const doneBtn   = root.querySelector('#review-done');
   const removeSets = groups.map(() => new Set());
+
+  function updateDoneBtn() {
+    const total = removeSets.reduce((n, s) => n + s.size, 0);
+    doneBtn.textContent = total > 0 ? `Remove ${total} photo${total === 1 ? '' : 's'}` : 'Done';
+    doneBtn.classList.toggle('review-done-active', total > 0);
+  }
 
   groups.forEach(({ files, reason }, gi) => {
     const card = document.createElement('div');
     card.className = 'review-card';
 
-    const groupLabel = document.createElement('p');
-    groupLabel.className = 'review-group-label';
-    groupLabel.textContent = reason === 'exact' ? 'Near-exact duplicate' : 'Visually similar';
-    card.appendChild(groupLabel);
+    const label = document.createElement('p');
+    label.className = 'review-group-label';
+    const prefix = groups.length > 1 ? `Group ${gi + 1} of ${groups.length}  ·  ` : '';
+    label.textContent = prefix + (reason === 'exact' ? 'Near-exact duplicates' : 'Visually similar');
+    card.appendChild(label);
 
     const thumbsRow = document.createElement('div');
     thumbsRow.className = 'review-thumbs';
@@ -39,7 +50,7 @@ export function mountReview(root, { onDone }) {
       thumb.appendChild(img);
 
       const badge = document.createElement('span');
-      badge.className = 'review-badge';
+      badge.className = 'review-badge keep';
       badge.textContent = 'Keep';
       thumb.appendChild(badge);
 
@@ -51,7 +62,7 @@ export function mountReview(root, { onDone }) {
         e.stopPropagation();
         try {
           await rotateFile(file.id);
-          img.src = '';        // force browser to drop cached frame
+          img.src = '';
           img.src = file.url;
         } catch (err) {
           console.error('[rotate]', err);
@@ -63,13 +74,16 @@ export function mountReview(root, { onDone }) {
         if (removeSets[gi].has(file.id)) {
           removeSets[gi].delete(file.id);
           thumb.classList.remove('removing');
+          badge.className = 'review-badge keep';
           badge.textContent = 'Keep';
         } else {
-          if (files.length - removeSets[gi].size <= 1) return; // must keep one
+          if (files.length - removeSets[gi].size <= 1) return;
           removeSets[gi].add(file.id);
           thumb.classList.add('removing');
+          badge.className = 'review-badge remove';
           badge.textContent = 'Remove';
         }
+        updateDoneBtn();
       });
 
       thumbsRow.appendChild(thumb);
@@ -84,15 +98,20 @@ export function mountReview(root, { onDone }) {
       removeSets[gi].clear();
       card.querySelectorAll('.review-thumb').forEach(t => {
         t.classList.remove('removing');
-        t.querySelector('.review-badge').textContent = 'Keep';
+        const b = t.querySelector('.review-badge');
+        b.className = 'review-badge keep';
+        b.textContent = 'Keep';
       });
+      updateDoneBtn();
     });
     card.appendChild(keepAllBtn);
 
     groupsEl.appendChild(card);
   });
 
-  root.querySelector('#review-done').addEventListener('click', () => {
+  updateDoneBtn();
+
+  doneBtn.addEventListener('click', () => {
     let removed = 0;
     removeSets.forEach(set => { set.forEach(id => { removeFile(id); removed++; }); });
     state.dupGroups = [];

@@ -192,7 +192,7 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
     detectDuplicates(state.files).then(groups => {
       state.dupGroups = groups;
       renderDupNotice();
-    });
+    }).catch(err => console.error('[duplicates]', err));
   }
 
   // Drop zone — file drop (ignore internal thumb drags)
