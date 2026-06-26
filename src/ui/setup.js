@@ -212,13 +212,20 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
 
     const files = [];
 
-    // Primary: items API — supports folders and webkitGetAsEntry
+    // Primary: items API with webkitGetAsEntry for folder support.
+    // Per-item try/catch so a failing entry (e.g. Photos app temp files not
+    // yet flushed to disk) falls back to getAsFile() rather than aborting.
     if (e.dataTransfer.items?.length) {
       for (const item of Array.from(e.dataTransfer.items)) {
         if (item.kind !== 'file') continue;
         const entry = item.webkitGetAsEntry?.();
         if (entry) {
-          files.push(...await collectFromEntry(entry));
+          try {
+            files.push(...await collectFromEntry(entry));
+          } catch {
+            const f = item.getAsFile();
+            if (f) files.push(f);
+          }
         } else {
           const f = item.getAsFile();
           if (f) files.push(f);
@@ -226,8 +233,8 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
       }
     }
 
-    // Fallback: dataTransfer.files (macOS Photos app and similar sources
-    // that populate files but not items with usable entries)
+    // Fallback: dataTransfer.files — macOS Photos app multi-select drag
+    // populates this even when items entries are unusable.
     if (files.length === 0 && e.dataTransfer.files?.length) {
       files.push(...Array.from(e.dataTransfer.files));
     }
