@@ -114,7 +114,6 @@ export function mountReview(root, { onDone }) {
   doneBtn.addEventListener('click', () => {
     let removed = 0;
     removeSets.forEach(set => { set.forEach(id => { removeFile(id); removed++; }); });
-    state.dupGroups = [];
     onDone(removed);
   });
 }

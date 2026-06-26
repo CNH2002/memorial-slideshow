@@ -73,7 +73,34 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
     if (n > 0) dupMsg.textContent = `${n} group${n === 1 ? '' : 's'} of similar photos found`;
   }
 
-  root.querySelector('#btn-review').addEventListener('click', onReview);
+  let detectionGen = 0;
+  function runDetection() {
+    const photoCount = state.files.filter(f => f.type === 'photo').length;
+    if (photoCount < 2) {
+      state.dupGroups = [];
+      renderDupNotice();
+      return;
+    }
+    dupNotice.hidden = false;
+    dupMsg.textContent = 'Checking for similar photos…';
+    const gen = ++detectionGen;
+    detectDuplicates(state.files)
+      .then(groups => {
+        if (gen !== detectionGen) return;
+        state.dupGroups = groups;
+        renderDupNotice();
+      })
+      .catch(err => {
+        console.error('[duplicates]', err);
+        if (gen !== detectionGen) return;
+        state.dupGroups = [];
+        renderDupNotice();
+      });
+  }
+
+  root.querySelector('#btn-review').addEventListener('click', () => {
+    if (state.dupGroups.length > 0) onReview();
+  });
 
   function renderGrid() {
     gridEl.innerHTML = '';
@@ -187,12 +214,7 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
       dropLabel.textContent = 'Drop your photos and videos here';
     }
     refresh();
-
-    // Detect perceptual duplicates; populate state so notice + review screen appear
-    detectDuplicates(state.files).then(groups => {
-      state.dupGroups = groups;
-      renderDupNotice();
-    }).catch(err => console.error('[duplicates]', err));
+    runDetection();
   }
 
   // Drop zone — file drop (ignore internal thumb drags)
@@ -262,4 +284,7 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
   playBtn.addEventListener('click', () => { if (state.files.length) onPlay(); });
 
   refresh();
+
+  // Re-run detection on every mount so returning from review/player always refreshes the notice.
+  if (state.files.filter(f => f.type === 'photo').length >= 2) runDetection();
 }
