@@ -1,15 +1,25 @@
 import { state, removeFile, rotateFile } from '../state.js';
 
-
 export function mountReview(root, { onDone }) {
-  const groups = state.dupGroups; // Array<{ files: fileRecord[], reason: 'exact'|'similar' }>
+  // Filter each group to only files that still exist in state.
+  // Files deleted from the grid after detection ran would otherwise appear as
+  // broken images (their object URLs were revoked by removeFile).
+  const groups = state.dupGroups
+    .map(g => ({ ...g, files: g.files.filter(f => state.files.some(sf => sf.id === f.id)) }))
+    .filter(g => g.files.length >= 2);
+
+  if (groups.length === 0) {
+    state.dupGroups = [];
+    onDone(0, []);
+    return;
+  }
 
   root.innerHTML = `
     <div id="screen-review">
       <div class="review-header">
         <div class="review-header-text">
           <h2 class="review-title">Review similar photos</h2>
-          <p class="review-subtitle">Keep the ones you want and tap the rest to mark them for removal — you can remove all of a group if you'd like. You can undo straight after.</p>
+          <p class="review-subtitle">Keep the ones you want and tap the rest to remove them — you can remove all of a group if you'd like. You can undo straight after.</p>
         </div>
         <button class="review-done-btn" id="review-done">Done</button>
       </div>
@@ -37,6 +47,7 @@ export function mountReview(root, { onDone }) {
     label.textContent = prefix + (reason === 'exact' ? 'Near-exact duplicates' : 'Visually similar');
     card.appendChild(label);
 
+    // Scrolling grid of photos
     const thumbsRow = document.createElement('div');
     thumbsRow.className = 'review-thumbs';
 
@@ -49,11 +60,6 @@ export function mountReview(root, { onDone }) {
       img.src = file.url;
       img.alt = file.name;
       thumb.appendChild(img);
-
-      const badge = document.createElement('span');
-      badge.className = 'review-badge keep';
-      badge.textContent = 'Keep';
-      thumb.appendChild(badge);
 
       const rotBtn = document.createElement('button');
       rotBtn.className = 'review-rotate-btn';
@@ -72,18 +78,8 @@ export function mountReview(root, { onDone }) {
       thumb.appendChild(rotBtn);
 
       thumb.addEventListener('click', () => {
-        if (removeSets[gi].has(file.id)) {
-          removeSets[gi].delete(file.id);
-          thumb.classList.remove('removing');
-          badge.className = 'review-badge keep';
-          badge.textContent = 'Keep';
-        } else {
-          removeSets[gi].add(file.id);
-          thumb.classList.add('removing');
-          badge.className = 'review-badge remove';
-          badge.textContent = 'Remove';
-        }
-        updateDoneBtn();
+        removeSets[gi].add(file.id);
+        syncGroupState();
       });
 
       thumbsRow.appendChild(thumb);
@@ -91,51 +87,81 @@ export function mountReview(root, { onDone }) {
 
     card.appendChild(thumbsRow);
 
+    // Expanded actions row (keep all / remove all)
     const groupActions = document.createElement('div');
     groupActions.className = 'review-group-actions';
 
     const keepAllBtn = document.createElement('button');
     keepAllBtn.className = 'keep-all-btn';
     keepAllBtn.textContent = 'Keep all';
-    keepAllBtn.addEventListener('click', () => {
-      removeSets[gi].clear();
-      card.querySelectorAll('.review-thumb').forEach(t => {
-        t.classList.remove('removing');
-        const b = t.querySelector('.review-badge');
-        b.className = 'review-badge keep';
-        b.textContent = 'Keep';
-      });
-      updateDoneBtn();
-    });
     groupActions.appendChild(keepAllBtn);
 
     const removeAllBtn = document.createElement('button');
     removeAllBtn.className = 'keep-all-btn remove-all-btn';
     removeAllBtn.textContent = 'Remove all';
-    removeAllBtn.addEventListener('click', () => {
-      files.forEach(f => {
-        removeSets[gi].add(f.id);
-        const t = card.querySelector(`[data-id="${f.id}"]`);
-        if (t) {
-          t.classList.add('removing');
-          const b = t.querySelector('.review-badge');
-          b.className = 'review-badge remove';
-          b.textContent = 'Remove';
-        }
-      });
-      updateDoneBtn();
-    });
     groupActions.appendChild(removeAllBtn);
 
     card.appendChild(groupActions);
 
+    // Collapsed notice — shown when ≤1 photo remains visible
+    const collapsedEl = document.createElement('div');
+    collapsedEl.className = 'review-card-collapsed';
+    collapsedEl.hidden = true;
+
+    const collapsedMsg = document.createElement('span');
+    collapsedMsg.className = 'review-card-collapsed-msg';
+    collapsedEl.appendChild(collapsedMsg);
+
+    const collapsedKeepAll = document.createElement('button');
+    collapsedKeepAll.className = 'keep-all-btn';
+    collapsedKeepAll.textContent = 'Keep all';
+    collapsedEl.appendChild(collapsedKeepAll);
+
+    card.appendChild(collapsedEl);
     groupsEl.appendChild(card);
+
+    function doKeepAll() {
+      removeSets[gi].clear();
+      syncGroupState();
+    }
+
+    keepAllBtn.addEventListener('click', doKeepAll);
+    collapsedKeepAll.addEventListener('click', doKeepAll);
+
+    removeAllBtn.addEventListener('click', () => {
+      files.forEach(f => removeSets[gi].add(f.id));
+      syncGroupState();
+    });
+
+    // Re-render this group's visual state from removeSets[gi].
+    // Called after every mark/unmark action so the grid always matches.
+    function syncGroupState() {
+      const visibleCount = files.filter(f => !removeSets[gi].has(f.id)).length;
+      const collapse = visibleCount <= 1;
+
+      files.forEach(f => {
+        const t = thumbsRow.querySelector(`[data-id="${f.id}"]`);
+        if (t) t.hidden = removeSets[gi].has(f.id);
+      });
+
+      thumbsRow.hidden  = collapse;
+      groupActions.hidden = collapse;
+      collapsedEl.hidden  = !collapse;
+
+      if (collapse) {
+        const n = removeSets[gi].size;
+        collapsedMsg.textContent = n === files.length
+          ? `All ${n} marked for removal`
+          : `${n} of ${files.length} marked for removal, 1 kept`;
+      }
+
+      updateDoneBtn();
+    }
   });
 
   updateDoneBtn();
 
   doneBtn.addEventListener('click', () => {
-    // Capture snapshots BEFORE removal — removeFile revokes the object URL.
     const snapshots = [];
     removeSets.forEach(set => {
       set.forEach(id => {
@@ -143,7 +169,6 @@ export function mountReview(root, { onDone }) {
         if (idx >= 0) snapshots.push({ file: state.files[idx], idx });
       });
     });
-    // Remove highest indices first so earlier indices stay stable.
     snapshots.sort((a, b) => b.idx - a.idx);
     for (const { file } of snapshots) removeFile(file.id);
     onDone(snapshots.length, snapshots);

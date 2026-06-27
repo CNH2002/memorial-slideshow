@@ -78,6 +78,7 @@ export function mountSetup(root, { onPlay, onReview }) {
   function renderDupNotice() {
     const n = state.dupGroups.length;
     dupNotice.hidden = n === 0;
+    dupNotice.classList.remove('checking');
     if (n > 0) dupMsg.textContent = `${n} group${n === 1 ? '' : 's'} of similar photos found`;
   }
 
@@ -90,6 +91,7 @@ export function mountSetup(root, { onPlay, onReview }) {
       return;
     }
     dupNotice.hidden = false;
+    dupNotice.classList.add('checking');
     dupMsg.textContent = 'Checking for similar photos…';
     const gen = ++detectionGen;
     detectDuplicates(state.files)

@@ -377,6 +377,22 @@ body {
   50%       { opacity: 0.2; }
 }
 
+/* Checking state: pulsing dot becomes a ring spinner */
+.dup-notice.checking .dup-dot {
+  width: 14px;
+  height: 14px;
+  background: none;
+  border: 2px solid rgba(201, 169, 110, 0.2);
+  border-top-color: var(--accent);
+  animation: dupSpin 0.75s linear infinite;
+}
+
+.dup-notice.checking .dup-review-btn { display: none; }
+
+@keyframes dupSpin {
+  to { transform: rotate(360deg); }
+}
+
 .dup-review-btn {
   background: none;
   border: none;
@@ -622,6 +638,25 @@ body {
 .keep-all-btn:hover { color: var(--text); }
 
 .remove-all-btn:hover { color: #c84040; }
+
+/* Collapsed group notice — shown when ≤1 photo remains after marking */
+.review-card-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.5rem 0;
+}
+
+.review-card-collapsed-msg {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* [hidden] must win over display:grid / display:flex on these elements */
+.review-thumbs[hidden],
+.review-group-actions[hidden],
+.review-card-collapsed[hidden] { display: none; }
 
 /* ── Player screen ────────────────────────────────────── */
 
