@@ -179,9 +179,8 @@ export function mountSetup(root, { onPlay, onReview }) {
         const img = document.createElement('img');
         img.src       = file.url;
         img.alt       = file.name;
+        img.loading   = 'lazy';
         img.draggable = false;
-        // Blob URLs are already in RAM — eager decode avoids a grey frame on mount
-        img.decode().catch(() => {});
         thumb.appendChild(img);
       } else {
         // Play-icon overlay shows immediately; img is only inserted once the
