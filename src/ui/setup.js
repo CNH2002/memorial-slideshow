@@ -220,8 +220,8 @@ export function mountSetup(root, { onPlay, onReview }) {
       thumb.appendChild(rotBtn);
 
       if (file.type === 'video' && file.rotation) {
-        thumb.querySelector('.video-thumb-placeholder').style.transform =
-          `rotate(${file.rotation}deg)`;
+        const vidImg = thumb.querySelector('.video-thumb-img');
+        if (vidImg) vidImg.style.transform = `rotate(${file.rotation}deg)`;
       }
 
       const removeBtn = document.createElement('button');
