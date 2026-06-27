@@ -3,6 +3,10 @@ import { state, addFiles, removeFile, reorderFile, rotateFile, restoreFiles } fr
 import { detectDuplicates, detectExactGroups } from '../duplicates.js';
 import { showUndoToast, dismissToast } from './toast.js';
 
+// Module-level: updated each mount so shared files always go to the active instance.
+let _activeHandleFiles = null;
+window.addEventListener('slideshow:shared-files', e => _activeHandleFiles?.(e.detail));
+
 function countLabel(files) {
   const photos = files.filter(f => f.type === 'photo').length;
   const videos = files.filter(f => f.type === 'video').length;
@@ -332,4 +336,7 @@ export function mountSetup(root, { onPlay, onReview }) {
 
   // Re-run detection on every mount so returning from review/player always refreshes the notice.
   if (state.files.filter(f => f.type === 'photo').length >= 2) runDetection();
+
+  // Register this mount's handleFiles as the target for Web Share Target deliveries.
+  _activeHandleFiles = handleFiles;
 }
