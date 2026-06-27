@@ -81,6 +81,12 @@ export function mountSetup(root, { onPlay, onReview }) {
 
   let dragSrcIdx = null;
 
+  // Touch drag state (long-press to initiate, then drag to reorder)
+  let touchActive   = false;
+  let touchTimer    = null;
+  let touchStartX   = 0;
+  let touchStartY   = 0;
+
   function renderDupNotice() {
     const n = state.dupGroups.length;
     dupNotice.hidden = n === 0;
@@ -119,6 +125,11 @@ export function mountSetup(root, { onPlay, onReview }) {
   });
 
   function renderGrid() {
+    // Clear any stale drag state from a previous render
+    clearTimeout(touchTimer);
+    touchTimer    = null;
+    touchActive   = false;
+    dragSrcIdx    = null;
     gridEl.innerHTML = '';
     state.files.forEach((file, idx) => {
       const thumb = document.createElement('div');
@@ -201,6 +212,56 @@ export function mountSetup(root, { onPlay, onReview }) {
           refresh();
         }
       });
+
+      // ── Touch drag-to-reorder (long press → drag) ────────
+      thumb.addEventListener('touchstart', e => {
+        if (touchActive) return;
+        const t = e.touches[0];
+        touchStartX = t.clientX;
+        touchStartY = t.clientY;
+        touchTimer = setTimeout(() => {
+          touchActive = true;
+          dragSrcIdx  = idx;
+          thumb.classList.add('touch-dragging', 'dragging');
+          navigator.vibrate?.(20);
+        }, 350);
+      }, { passive: true });
+
+      thumb.addEventListener('touchmove', e => {
+        if (!touchActive) {
+          if (touchTimer) {
+            const t = e.touches[0];
+            if (Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY) > 8) {
+              clearTimeout(touchTimer);
+              touchTimer = null;
+            }
+          }
+          return;
+        }
+        e.preventDefault();
+        const t   = e.touches[0];
+        const el  = document.elementFromPoint(t.clientX, t.clientY)?.closest?.('.media-thumb');
+        gridEl.querySelectorAll('.drag-target').forEach(d => d.classList.remove('drag-target'));
+        if (el && el !== thumb) el.classList.add('drag-target');
+      }, { passive: false });
+
+      const endTouchDrag = e => {
+        clearTimeout(touchTimer);
+        touchTimer = null;
+        if (!touchActive) return;
+        const t = e.changedTouches?.[0] ?? e.touches?.[0];
+        if (t) {
+          const el   = document.elementFromPoint(t.clientX, t.clientY)?.closest?.('.media-thumb');
+          const tIdx = el ? +el.dataset.idx : null;
+          gridEl.querySelectorAll('.drag-target').forEach(d => d.classList.remove('drag-target'));
+          if (tIdx !== null && tIdx !== idx) { reorderFile(idx, tIdx); refresh(); }
+        }
+        thumb.classList.remove('touch-dragging', 'dragging');
+        touchActive = false;
+        dragSrcIdx  = null;
+      };
+      thumb.addEventListener('touchend',    endTouchDrag);
+      thumb.addEventListener('touchcancel', endTouchDrag);
 
       gridEl.appendChild(thumb);
     });
@@ -321,7 +382,12 @@ export function mountSetup(root, { onPlay, onReview }) {
   // Add-more button (loaded state top bar)
   addMoreBtn.addEventListener('click', () => fileInput.click());
 
-  fileInput.addEventListener('change', () => handleFiles(fileInput.files));
+  fileInput.addEventListener('change', () => {
+    // Snapshot immediately — iOS Safari FileList references can expire after async gaps
+    const files = Array.from(fileInput.files || []);
+    fileInput.value = ''; // reset so the same files can be re-selected later
+    if (files.length) handleFiles(files);
+  });
 
   // Timing slider
   slider.addEventListener('input', () => {

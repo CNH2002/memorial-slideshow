@@ -82,10 +82,10 @@ async function orientNormalize(blob) {
   );
 }
 
-async function fileHash(file) {
-  const buf    = await file.arrayBuffer();
-  const digest = await crypto.subtle.digest('SHA-256', buf);
-  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+function bufHash(buf) {
+  return crypto.subtle.digest('SHA-256', buf).then(
+    d => Array.from(new Uint8Array(d)).map(b => b.toString(16).padStart(2, '0')).join('')
+  );
 }
 
 // Recursively collect File objects from a DataTransferEntry (file or directory).
@@ -120,7 +120,12 @@ export async function processFiles(rawFiles, onProgress) {
     const mediaType = detectType(file);
     if (!mediaType) { onProgress?.(++completed, total); return; }
 
-    const hash = await fileHash(file);
+    // Read into memory immediately — iOS Safari File objects can expire after async gaps
+    let buf;
+    try { buf = await file.arrayBuffer(); }
+    catch { onProgress?.(++completed, total); return; }
+
+    const hash = await bufHash(buf);
     if (seenHashes.has(hash)) {
       console.log(`[import] skip duplicate: ${file.name}`);
       onProgress?.(++completed, total);
@@ -129,10 +134,11 @@ export async function processFiles(rawFiles, onProgress) {
     seenHashes.add(hash);
 
     try {
-      let blob = file;
+      // Use a pure Blob (detached from the File) so the URL stays valid regardless of input lifetime
+      let blob = new Blob([buf], { type: file.type || 'application/octet-stream' });
       if (mediaType === 'photo') {
         if (HEIC_EXTS.has(fileExt(file.name))) {
-          const r = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+          const r = await heic2any({ blob, toType: 'image/jpeg', quality: 0.92 });
           blob = Array.isArray(r) ? r[0] : r;
         }
       }
