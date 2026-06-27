@@ -7,6 +7,39 @@ import { showUndoToast, dismissToast } from './toast.js';
 let _activeHandleFiles = null;
 window.addEventListener('slideshow:shared-files', e => _activeHandleFiles?.(e.detail));
 
+// Capture the first readable frame of a video as a square-cropped blob URL.
+function captureVideoThumbnail(src) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.muted      = true;
+    video.playsInline = true;
+    video.preload    = 'metadata';
+
+    const fail = () => { video.src = ''; reject(new Error('thumb')); };
+
+    video.addEventListener('error', fail, { once: true });
+    video.addEventListener('loadedmetadata', () => {
+      video.currentTime = Math.min(0.5, video.duration / 4 || 0);
+    }, { once: true });
+    video.addEventListener('seeked', () => {
+      try {
+        const W = video.videoWidth, H = video.videoHeight;
+        if (!W || !H) { fail(); return; }
+        const size = Math.min(W, H);
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = size;
+        canvas.getContext('2d').drawImage(
+          video, (W - size) / 2, (H - size) / 2, size, size, 0, 0, size, size
+        );
+        video.src = '';
+        canvas.toBlob(b => b ? resolve(URL.createObjectURL(b)) : fail(), 'image/jpeg', 0.82);
+      } catch { fail(); }
+    }, { once: true });
+
+    video.src = src;
+  });
+}
+
 function countLabel(files) {
   const photos = files.filter(f => f.type === 'photo').length;
   const videos = files.filter(f => f.type === 'video').length;
@@ -81,6 +114,10 @@ export function mountSetup(root, { onPlay, onReview }) {
 
   let dragSrcIdx = null;
 
+  // Cache blob URLs for video thumbnails (keyed by file id); revoke on unmount not needed
+  // since the app is single-page and thumbnails live as long as the session.
+  const videoThumbCache = new Map();
+
   // Touch drag state (long-press to initiate, then drag to reorder)
   let touchActive   = false;
   let touchTimer    = null;
@@ -146,10 +183,29 @@ export function mountSetup(root, { onPlay, onReview }) {
         img.draggable = false;
         thumb.appendChild(img);
       } else {
-        const ph = document.createElement('div');
-        ph.className = 'video-thumb-placeholder';
-        ph.textContent = '▶';
-        thumb.appendChild(ph);
+        // Show a real video frame with a play-icon overlay
+        const img = document.createElement('img');
+        img.alt       = file.name;
+        img.draggable = false;
+        img.className = 'video-thumb-img';
+        thumb.appendChild(img);
+
+        const overlay = document.createElement('div');
+        overlay.className = 'video-play-overlay';
+        overlay.setAttribute('aria-hidden', 'true');
+        overlay.textContent = '▶';
+        thumb.appendChild(overlay);
+
+        if (videoThumbCache.has(file.id)) {
+          img.src = videoThumbCache.get(file.id);
+        } else {
+          captureVideoThumbnail(file.url).then(url => {
+            videoThumbCache.set(file.id, url);
+            // Only update the DOM if this thumb is still in the grid
+            const live = gridEl.querySelector(`[data-id="${file.id}"] .video-thumb-img`);
+            if (live) live.src = url;
+          }).catch(() => {});
+        }
       }
 
       const rotBtn = document.createElement('button');
@@ -222,7 +278,7 @@ export function mountSetup(root, { onPlay, onReview }) {
         touchTimer = setTimeout(() => {
           touchActive = true;
           dragSrcIdx  = idx;
-          thumb.classList.add('touch-dragging', 'dragging');
+          thumb.classList.add('dragging');
           navigator.vibrate?.(20);
         }, 350);
       }, { passive: true });
@@ -256,7 +312,7 @@ export function mountSetup(root, { onPlay, onReview }) {
           gridEl.querySelectorAll('.drag-target').forEach(d => d.classList.remove('drag-target'));
           if (tIdx !== null && tIdx !== idx) { reorderFile(idx, tIdx); refresh(); }
         }
-        thumb.classList.remove('touch-dragging', 'dragging');
+        thumb.classList.remove('dragging');
         touchActive = false;
         dragSrcIdx  = null;
       };
