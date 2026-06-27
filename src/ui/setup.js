@@ -232,6 +232,13 @@ export function mountSetup(root, { onPlay, onReview }) {
     }
     refresh();
 
+    // Show checking indicator immediately so there's no silent gap before detection starts
+    if (state.files.filter(f => f.type === 'photo').length >= 2) {
+      dupNotice.hidden = false;
+      dupNotice.classList.add('checking');
+      dupMsg.textContent = 'Checking for similar photos…';
+    }
+
     // Auto-remove near-exact duplicates silently (no user input needed)
     const exactGroups = await detectExactGroups(state.files);
     let autoRemoved = 0;

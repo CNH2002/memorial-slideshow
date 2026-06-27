@@ -137,7 +137,7 @@ export function mountReview(root, { onDone }) {
     // Called after every mark/unmark action so the grid always matches.
     function syncGroupState() {
       const visibleCount = files.filter(f => !removeSets[gi].has(f.id)).length;
-      const collapse = visibleCount <= 1;
+      const collapse = visibleCount === 0;
 
       files.forEach(f => {
         const t = thumbsRow.querySelector(`[data-id="${f.id}"]`);
