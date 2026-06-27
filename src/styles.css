@@ -279,6 +279,8 @@ body {
   overflow: hidden;
   cursor: grab;
   background: #1a1816;
+  -webkit-touch-callout: none; /* suppress iOS "Save / Share" sheet on long-press */
+  user-select: none;
 }
 
 .media-thumb:active { cursor: grabbing; }

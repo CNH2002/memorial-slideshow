@@ -383,6 +383,10 @@ export function mountSetup(root, { onPlay, onReview }) {
     runDetection();
   }
 
+  // Block the browser context menu on the grid so long-press drag isn't
+  // interrupted by the iOS "Save / Share" sheet or Android's image menu.
+  gridEl.addEventListener('contextmenu', e => e.preventDefault());
+
   // File drop — on screenEl so it works in both empty and loaded states
   screenEl.addEventListener('dragover', e => {
     if (dragSrcIdx !== null) return;
