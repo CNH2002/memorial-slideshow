@@ -135,7 +135,6 @@ export async function processFiles(rawFiles, onProgress) {
           const r = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
           blob = Array.isArray(r) ? r[0] : r;
         }
-        blob = await orientNormalize(blob);
       }
       results[i] = {
         id: crypto.randomUUID(), name: file.name, type: mediaType,
