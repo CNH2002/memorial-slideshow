@@ -185,7 +185,7 @@ export function mountSetup(root, { onPlay, onReview }) {
       } else {
         // Show a real video frame with a play-icon overlay
         const img = document.createElement('img');
-        img.alt       = file.name;
+        img.alt       = '';  // suppress alt-text flash while frame capture is pending
         img.draggable = false;
         img.className = 'video-thumb-img';
         thumb.appendChild(img);

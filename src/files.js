@@ -120,7 +120,27 @@ export async function processFiles(rawFiles, onProgress) {
     const mediaType = detectType(file);
     if (!mediaType) { onProgress?.(++completed, total); return; }
 
-    // Read into memory immediately — iOS Safari File objects can expire after async gaps
+    if (mediaType === 'video') {
+      // Videos can be gigabytes — never buffer the whole file.
+      // size+lastModified+name is a collision-resistant fingerprint for a family collection,
+      // and the File object stays alive in rawFiles[] so its object URL is stable.
+      const hash = `${file.size}:${file.lastModified}:${file.name}`;
+      if (seenHashes.has(hash)) {
+        console.log(`[import] skip duplicate: ${file.name}`);
+        onProgress?.(++completed, total);
+        return;
+      }
+      seenHashes.add(hash);
+      results[i] = {
+        id: crypto.randomUUID(), name: file.name, type: 'video',
+        blob: file, url: URL.createObjectURL(file), rotation: 0, contentHash: hash,
+      };
+      onProgress?.(++completed, total);
+      return;
+    }
+
+    // Photos: read into memory immediately — iOS Safari File objects can expire after
+    // async gaps, and we need the buffer for HEIC conversion anyway.
     let buf;
     try { buf = await file.arrayBuffer(); }
     catch { onProgress?.(++completed, total); return; }
@@ -134,16 +154,13 @@ export async function processFiles(rawFiles, onProgress) {
     seenHashes.add(hash);
 
     try {
-      // Use a pure Blob (detached from the File) so the URL stays valid regardless of input lifetime
       let blob = new Blob([buf], { type: file.type || 'application/octet-stream' });
-      if (mediaType === 'photo') {
-        if (HEIC_EXTS.has(fileExt(file.name))) {
-          const r = await heic2any({ blob, toType: 'image/jpeg', quality: 0.92 });
-          blob = Array.isArray(r) ? r[0] : r;
-        }
+      if (HEIC_EXTS.has(fileExt(file.name))) {
+        const r = await heic2any({ blob, toType: 'image/jpeg', quality: 0.92 });
+        blob = Array.isArray(r) ? r[0] : r;
       }
       results[i] = {
-        id: crypto.randomUUID(), name: file.name, type: mediaType,
+        id: crypto.randomUUID(), name: file.name, type: 'photo',
         blob, url: URL.createObjectURL(blob), rotation: 0, contentHash: hash,
       };
     } catch (err) {
