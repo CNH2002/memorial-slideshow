@@ -118,6 +118,31 @@ body {
   border-top: 1px solid #1e1c1a;
 }
 
+/* Folder-pick button — below the empty-state drop zone (desktop only) */
+.folder-btn {
+  display: block;
+  margin: 0.75rem auto 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  padding: 0.25rem 0;
+  transition: color 0.15s;
+}
+
+.folder-btn:hover { color: var(--text); }
+.folder-btn:disabled { opacity: 0.4; cursor: wait; }
+
+/* Hide folder controls on touch devices — webkitdirectory unsupported on iOS */
+@media (hover: none) {
+  .folder-btn,
+  .add-folder-btn { display: none !important; }
+}
+
 /* Add-more button — top bar, loaded state */
 .add-more-btn {
   flex-shrink: 0;

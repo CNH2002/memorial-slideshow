@@ -65,9 +65,10 @@ export function mountSetup(root, { onPlay, onReview }) {
           <div class="drop-zone-inner">
             <span class="drop-arrow" aria-hidden="true">↓</span>
             <p class="drop-primary" id="drop-primary">${isTouch ? 'Tap to add photos and videos' : 'Drop your photos and videos here'}</p>
-            <p class="drop-secondary">${isTouch ? 'Choose from your photo library' : 'JPG · PNG · HEIC · WebP · MP4 · MOV'}</p>
+            <p class="drop-secondary">${isTouch ? 'In the picker tap Albums to import a whole shared album at once' : 'JPG · PNG · HEIC · WebP · MP4 · MOV'}</p>
           </div>
         </div>
+        <button class="folder-btn" id="folder-btn" type="button">or pick a folder</button>
       </div>
 
       <!-- Loaded state: top bar (file count + similar notice + add-more) -->
@@ -80,6 +81,7 @@ export function mountSetup(root, { onPlay, onReview }) {
         </div>
         <p class="removed-confirm" id="removed-confirm" hidden></p>
         <button class="add-more-btn" id="add-more-btn">+ Add more</button>
+        <button class="add-more-btn add-folder-btn" id="add-folder-btn">+ Add folder</button>
       </div>
 
       <!-- Loaded state: scrolling grid (only this zone scrolls) -->
@@ -98,21 +100,25 @@ export function mountSetup(root, { onPlay, onReview }) {
       </div>
 
       <input type="file" id="file-input" multiple accept="image/*,video/*,.heic,.heif,.mov" hidden>
+      <input type="file" id="folder-input" webkitdirectory accept="image/*,video/*,.heic,.heif,.mov" hidden>
     </div>
   `;
 
-  const screenEl   = root.querySelector('#screen-setup');
-  const dropZone   = root.querySelector('#drop-zone');
-  const fileInput  = root.querySelector('#file-input');
-  const dropLabel  = root.querySelector('#drop-primary');
-  const countsEl   = root.querySelector('#file-counts');
-  const gridEl     = root.querySelector('#media-grid');
-  const dupNotice  = root.querySelector('#dup-notice');
-  const dupMsg     = root.querySelector('#dup-message');
-  const slider     = root.querySelector('#timing-slider');
-  const timingVal  = root.querySelector('#timing-value');
-  const playBtn    = root.querySelector('#play-btn');
-  const addMoreBtn = root.querySelector('#add-more-btn');
+  const screenEl     = root.querySelector('#screen-setup');
+  const dropZone     = root.querySelector('#drop-zone');
+  const fileInput    = root.querySelector('#file-input');
+  const folderInput  = root.querySelector('#folder-input');
+  const dropLabel    = root.querySelector('#drop-primary');
+  const countsEl     = root.querySelector('#file-counts');
+  const gridEl       = root.querySelector('#media-grid');
+  const dupNotice    = root.querySelector('#dup-notice');
+  const dupMsg       = root.querySelector('#dup-message');
+  const slider       = root.querySelector('#timing-slider');
+  const timingVal    = root.querySelector('#timing-value');
+  const playBtn      = root.querySelector('#play-btn');
+  const addMoreBtn   = root.querySelector('#add-more-btn');
+  const addFolderBtn = root.querySelector('#add-folder-btn');
+  const folderBtn    = root.querySelector('#folder-btn');
 
   const removedConfirm = root.querySelector('#removed-confirm');
 
@@ -342,6 +348,8 @@ export function mountSetup(root, { onPlay, onReview }) {
     if (!arr.length) return;
     dropZone.classList.add('loading');
     addMoreBtn.disabled = true;
+    addFolderBtn.disabled = true;
+    folderBtn.disabled = true;
     dropLabel.textContent = 'Processing…';
     try {
       const records = await processFiles(arr, (done, total) => {
@@ -353,6 +361,8 @@ export function mountSetup(root, { onPlay, onReview }) {
     } finally {
       dropZone.classList.remove('loading');
       addMoreBtn.disabled = false;
+      addFolderBtn.disabled = false;
+      folderBtn.disabled = false;
       dropLabel.textContent = 'Drop your photos and videos here';
     }
     refresh();
@@ -443,11 +453,19 @@ export function mountSetup(root, { onPlay, onReview }) {
 
   // Add-more button (loaded state top bar)
   addMoreBtn.addEventListener('click', () => fileInput.click());
+  addFolderBtn.addEventListener('click', () => folderInput.click());
+  folderBtn.addEventListener('click', () => folderInput.click());
 
   fileInput.addEventListener('change', () => {
     // Snapshot immediately — iOS Safari FileList references can expire after async gaps
     const files = Array.from(fileInput.files || []);
-    fileInput.value = ''; // reset so the same files can be re-selected later
+    fileInput.value = '';
+    if (files.length) handleFiles(files);
+  });
+
+  folderInput.addEventListener('change', () => {
+    const files = Array.from(folderInput.files || []);
+    folderInput.value = '';
     if (files.length) handleFiles(files);
   });
 
