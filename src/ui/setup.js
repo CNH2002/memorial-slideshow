@@ -1,6 +1,7 @@
 import { processFiles, collectFromEntry } from '../files.js';
-import { state, addFiles, removeFile, reorderFile, rotateFile } from '../state.js';
+import { state, addFiles, removeFile, reorderFile, rotateFile, restoreFiles } from '../state.js';
 import { detectDuplicates, detectExactGroups } from '../duplicates.js';
+import { showUndoToast, dismissToast } from './toast.js';
 
 function countLabel(files) {
   const photos = files.filter(f => f.type === 'photo').length;
@@ -11,7 +12,7 @@ function countLabel(files) {
   return parts.join(' · ');
 }
 
-export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
+export function mountSetup(root, { onPlay, onReview }) {
   root.innerHTML = `
     <div id="screen-setup">
 
@@ -71,11 +72,6 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
   const addMoreBtn = root.querySelector('#add-more-btn');
 
   const removedConfirm = root.querySelector('#removed-confirm');
-  if (removedCount > 0) {
-    removedConfirm.textContent = `${removedCount} photo${removedCount === 1 ? '' : 's'} removed.`;
-    removedConfirm.hidden = false;
-    setTimeout(() => { removedConfirm.hidden = true; }, 4000);
-  }
 
   let dragSrcIdx = null;
 
@@ -111,7 +107,7 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
   }
 
   root.querySelector('#btn-review').addEventListener('click', () => {
-    if (state.dupGroups.length > 0) onReview();
+    if (state.dupGroups.length > 0) { dismissToast(); onReview(); }
   });
 
   function renderGrid() {
@@ -159,8 +155,15 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
       removeBtn.textContent = '×';
       removeBtn.addEventListener('click', e => {
         e.stopPropagation();
+        const snapshot = { file, idx };
+        dismissToast();
         removeFile(file.id);
         refresh();
+        showUndoToast('1 removed', () => {
+          restoreFiles([snapshot]);
+          refresh();
+          if (state.files.filter(f => f.type === 'photo').length >= 2) runDetection();
+        });
       });
       thumb.appendChild(removeBtn);
 
@@ -312,7 +315,7 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
     timingVal.textContent = `${v} second${v === 1 ? '' : 's'}`;
   });
 
-  playBtn.addEventListener('click', () => { if (state.files.length) onPlay(); });
+  playBtn.addEventListener('click', () => { if (state.files.length) { dismissToast(); onPlay(); } });
 
   refresh();
 

@@ -21,6 +21,17 @@ export function removeFile(id) {
   state.files.splice(idx, 1);
 }
 
+// Restore files removed by the most recent action.
+// snapshots: Array<{ file, idx }> — revives each file's object URL and reinserts
+// at its original position. Insert lowest-index first to keep positions stable.
+export function restoreFiles(snapshots) {
+  const sorted = [...snapshots].sort((a, b) => a.idx - b.idx);
+  for (const { file, idx } of sorted) {
+    file.url = URL.createObjectURL(file.blob);
+    state.files.splice(Math.min(idx, state.files.length), 0, file);
+  }
+}
+
 export function reorderFile(fromIdx, toIdx) {
   const [item] = state.files.splice(fromIdx, 1);
   state.files.splice(toIdx, 0, item);

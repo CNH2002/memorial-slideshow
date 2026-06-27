@@ -1,5 +1,6 @@
 import { state, removeFile, rotateFile } from '../state.js';
 
+
 export function mountReview(root, { onDone }) {
   const groups = state.dupGroups; // Array<{ files: fileRecord[], reason: 'exact'|'similar' }>
 
@@ -8,7 +9,7 @@ export function mountReview(root, { onDone }) {
       <div class="review-header">
         <div class="review-header-text">
           <h2 class="review-title">Review similar photos</h2>
-          <p class="review-subtitle">Click a photo to mark it for removal. At least one per group will always be kept.</p>
+          <p class="review-subtitle">Keep the ones you want and tap the rest to mark them for removal — you can remove all of a group if you'd like. You can undo straight after.</p>
         </div>
         <button class="review-done-btn" id="review-done">Done</button>
       </div>
@@ -134,8 +135,17 @@ export function mountReview(root, { onDone }) {
   updateDoneBtn();
 
   doneBtn.addEventListener('click', () => {
-    let removed = 0;
-    removeSets.forEach(set => { set.forEach(id => { removeFile(id); removed++; }); });
-    onDone(removed);
+    // Capture snapshots BEFORE removal — removeFile revokes the object URL.
+    const snapshots = [];
+    removeSets.forEach(set => {
+      set.forEach(id => {
+        const idx = state.files.findIndex(f => f.id === id);
+        if (idx >= 0) snapshots.push({ file: state.files[idx], idx });
+      });
+    });
+    // Remove highest indices first so earlier indices stay stable.
+    snapshots.sort((a, b) => b.idx - a.idx);
+    for (const { file } of snapshots) removeFile(file.id);
+    onDone(snapshots.length, snapshots);
   });
 }
