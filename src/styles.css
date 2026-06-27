@@ -118,6 +118,46 @@ body {
   border-top: 1px solid #1e1c1a;
 }
 
+/* Album import guide — touch/mobile only, hidden on desktop */
+.album-guide {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #2a2724;
+  border-radius: var(--radius);
+  background: #0f0e0d;
+}
+
+.album-guide-title {
+  font-size: 0.78rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+
+.album-guide-steps {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.album-guide-steps li {
+  font-size: 0.88rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.album-guide-steps strong {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+@media (hover: hover) {
+  .album-guide { display: none; }
+}
+
 /* Folder-pick button — below the empty-state drop zone (desktop only) */
 .folder-btn {
   display: block;

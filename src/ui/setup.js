@@ -65,10 +65,19 @@ export function mountSetup(root, { onPlay, onReview }) {
           <div class="drop-zone-inner">
             <span class="drop-arrow" aria-hidden="true">↓</span>
             <p class="drop-primary" id="drop-primary">${isTouch ? 'Tap to add photos and videos' : 'Drop your photos and videos here'}</p>
-            <p class="drop-secondary">${isTouch ? 'In the picker tap Albums to import a whole shared album at once' : 'JPG · PNG · HEIC · WebP · MP4 · MOV'}</p>
+            <p class="drop-secondary">${isTouch ? 'Select multiple photos from any album in the picker' : 'JPG · PNG · HEIC · WebP · MP4 · MOV'}</p>
           </div>
         </div>
         <button class="folder-btn" id="folder-btn" type="button">or pick a folder</button>
+        ${isTouch ? `
+        <div class="album-guide">
+          <p class="album-guide-title">To import an entire album at once:</p>
+          <ol class="album-guide-steps">
+            <li>Open the <strong>Photos</strong> app and go to your album</li>
+            <li>Tap <strong>Select</strong> then <strong>Select All</strong></li>
+            <li>Tap the <strong>Share</strong> icon and choose <strong>Slideshow</strong></li>
+          </ol>
+        </div>` : ''}
       </div>
 
       <!-- Loaded state: top bar (file count + similar notice + add-more) -->
