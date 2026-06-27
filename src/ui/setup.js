@@ -14,49 +14,61 @@ function countLabel(files) {
 export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
   root.innerHTML = `
     <div id="screen-setup">
-      <div class="setup-inner">
+
+      <!-- Empty state: large centered drop zone (no files loaded) -->
+      <div class="setup-empty-zone">
         <div class="drop-zone" id="drop-zone" role="button" tabindex="0">
           <div class="drop-zone-inner">
             <span class="drop-arrow" aria-hidden="true">↓</span>
             <p class="drop-primary" id="drop-primary">Drop your photos and videos here</p>
             <p class="drop-secondary">JPG · PNG · HEIC · WebP · MP4 · MOV</p>
           </div>
-          <input type="file" id="file-input" multiple accept="image/*,video/*,.heic,.heif,.mov" hidden>
         </div>
+      </div>
 
-        <p class="file-counts" id="file-counts"></p>
-        <div class="media-grid" id="media-grid"></div>
-
-        <p class="removed-confirm" id="removed-confirm" hidden></p>
-
+      <!-- Loaded state: top bar (file count + similar notice + add-more) -->
+      <div class="setup-topbar">
+        <span class="file-counts" id="file-counts"></span>
         <div class="dup-notice" id="dup-notice" hidden>
           <span class="dup-dot"></span>
           <span id="dup-message"></span>
           <button class="dup-review-btn" id="btn-review">Review</button>
         </div>
+        <p class="removed-confirm" id="removed-confirm" hidden></p>
+        <button class="add-more-btn" id="add-more-btn">+ Add more</button>
+      </div>
 
+      <!-- Loaded state: scrolling grid (only this zone scrolls) -->
+      <div class="setup-grid-wrap">
+        <div class="media-grid" id="media-grid"></div>
+      </div>
+
+      <!-- Loaded state: bottom bar (timing + play) -->
+      <div class="setup-bottombar">
         <div class="timing-row">
           <span class="timing-label">Time per photo</span>
           <span class="timing-value" id="timing-value">7 seconds</span>
         </div>
         <input type="range" id="timing-slider" class="timing-slider" min="1" max="15" value="${state.settings.photoDuration}">
-
         <button class="play-btn" id="play-btn" disabled>Play slideshow</button>
       </div>
+
+      <input type="file" id="file-input" multiple accept="image/*,video/*,.heic,.heif,.mov" hidden>
     </div>
   `;
 
-  const screenEl  = root.querySelector('#screen-setup');
-  const dropZone  = root.querySelector('#drop-zone');
-  const fileInput = root.querySelector('#file-input');
-  const dropLabel = root.querySelector('#drop-primary');
-  const countsEl  = root.querySelector('#file-counts');
-  const gridEl    = root.querySelector('#media-grid');
-  const dupNotice = root.querySelector('#dup-notice');
-  const dupMsg    = root.querySelector('#dup-message');
-  const slider    = root.querySelector('#timing-slider');
-  const timingVal = root.querySelector('#timing-value');
-  const playBtn   = root.querySelector('#play-btn');
+  const screenEl   = root.querySelector('#screen-setup');
+  const dropZone   = root.querySelector('#drop-zone');
+  const fileInput  = root.querySelector('#file-input');
+  const dropLabel  = root.querySelector('#drop-primary');
+  const countsEl   = root.querySelector('#file-counts');
+  const gridEl     = root.querySelector('#media-grid');
+  const dupNotice  = root.querySelector('#dup-notice');
+  const dupMsg     = root.querySelector('#dup-message');
+  const slider     = root.querySelector('#timing-slider');
+  const timingVal  = root.querySelector('#timing-value');
+  const playBtn    = root.querySelector('#play-btn');
+  const addMoreBtn = root.querySelector('#add-more-btn');
 
   const removedConfirm = root.querySelector('#removed-confirm');
   if (removedCount > 0) {
@@ -106,16 +118,16 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
     gridEl.innerHTML = '';
     state.files.forEach((file, idx) => {
       const thumb = document.createElement('div');
-      thumb.className    = 'media-thumb';
-      thumb.draggable    = true;
-      thumb.dataset.id   = file.id;
-      thumb.dataset.idx  = idx;
+      thumb.className   = 'media-thumb';
+      thumb.draggable   = true;
+      thumb.dataset.id  = file.id;
+      thumb.dataset.idx = idx;
 
       if (file.type === 'photo') {
         const img = document.createElement('img');
-        img.src     = file.url;
-        img.alt     = file.name;
-        img.loading = 'lazy';
+        img.src       = file.url;
+        img.alt       = file.name;
+        img.loading   = 'lazy';
         img.draggable = false;
         thumb.appendChild(img);
       } else {
@@ -136,22 +148,21 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
       });
       thumb.appendChild(rotBtn);
 
-      // Apply CSS rotation for videos (photos have baked blobs)
       if (file.type === 'video' && file.rotation) {
         thumb.querySelector('.video-thumb-placeholder').style.transform =
           `rotate(${file.rotation}deg)`;
       }
 
-      const btn = document.createElement('button');
-      btn.className = 'thumb-remove';
-      btn.setAttribute('aria-label', 'Remove');
-      btn.textContent = '×';
-      btn.addEventListener('click', e => {
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'thumb-remove';
+      removeBtn.setAttribute('aria-label', 'Remove');
+      removeBtn.textContent = '×';
+      removeBtn.addEventListener('click', e => {
         e.stopPropagation();
         removeFile(file.id);
         refresh();
       });
-      thumb.appendChild(btn);
+      thumb.appendChild(removeBtn);
 
       // Drag-to-reorder
       thumb.addEventListener('dragstart', e => {
@@ -186,13 +197,12 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
 
   function refresh() {
     const hasFiles = state.files.length > 0;
-    countsEl.textContent   = countLabel(state.files);
-    countsEl.style.display = hasFiles ? '' : 'none';
-    playBtn.disabled       = !hasFiles;
+    countsEl.textContent  = countLabel(state.files);
+    playBtn.disabled      = !hasFiles;
     const d = state.settings.photoDuration;
-    timingVal.textContent  = `${d} second${d === 1 ? '' : 's'}`;
-    slider.value           = d;
-    screenEl.classList.toggle('has-files', hasFiles);
+    timingVal.textContent = `${d} second${d === 1 ? '' : 's'}`;
+    slider.value          = d;
+    screenEl.classList.toggle('loaded', hasFiles);
     renderGrid();
     renderDupNotice();
   }
@@ -201,6 +211,7 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
     const arr = Array.from(rawFiles).filter(Boolean);
     if (!arr.length) return;
     dropZone.classList.add('loading');
+    addMoreBtn.disabled = true;
     dropLabel.textContent = 'Processing…';
     try {
       const records = await processFiles(arr, (done, total) => {
@@ -211,11 +222,12 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
       console.error('Import error:', err);
     } finally {
       dropZone.classList.remove('loading');
+      addMoreBtn.disabled = false;
       dropLabel.textContent = 'Drop your photos and videos here';
     }
     refresh();
 
-    // Auto-remove near-exact duplicates silently (no user input needed for structurally identical photos)
+    // Auto-remove near-exact duplicates silently (no user input needed)
     const exactGroups = await detectExactGroups(state.files);
     let autoRemoved = 0;
     for (const group of exactGroups) {
@@ -234,17 +246,17 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
     runDetection();
   }
 
-  // Drop zone — file drop (ignore internal thumb drags)
-  dropZone.addEventListener('dragover', e => {
+  // File drop — on screenEl so it works in both empty and loaded states
+  screenEl.addEventListener('dragover', e => {
     if (dragSrcIdx !== null) return;
     if (!e.dataTransfer.types.includes('Files')) return;
     e.preventDefault();
     dropZone.classList.add('drag-over');
   });
-  dropZone.addEventListener('dragleave', e => {
-    if (!dropZone.contains(e.relatedTarget)) dropZone.classList.remove('drag-over');
+  screenEl.addEventListener('dragleave', e => {
+    if (!screenEl.contains(e.relatedTarget)) dropZone.classList.remove('drag-over');
   });
-  dropZone.addEventListener('drop', async e => {
+  screenEl.addEventListener('drop', async e => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
     if (dragSrcIdx !== null) return; // internal thumb drag
@@ -262,7 +274,6 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
       }
     }
 
-    // Resolve entries asynchronously (FileSystemEntry objects stay valid after await)
     const files = [];
     for (const { entry, file } of itemRefs) {
       if (entry) {
@@ -276,7 +287,6 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
       }
     }
 
-    // Fallback: dataTransfer.files — macOS Photos app multi-select drag
     if (files.length === 0 && e.dataTransfer.files?.length) {
       files.push(...Array.from(e.dataTransfer.files));
     }
@@ -284,11 +294,15 @@ export function mountSetup(root, { onPlay, onReview, removedCount = 0 }) {
     await handleFiles(files);
   });
 
-  // Click-to-browse
+  // Click-to-browse (empty state)
   dropZone.addEventListener('click', () => fileInput.click());
   dropZone.addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') fileInput.click();
   });
+
+  // Add-more button (loaded state top bar)
+  addMoreBtn.addEventListener('click', () => fileInput.click());
+
   fileInput.addEventListener('change', () => handleFiles(fileInput.files));
 
   // Timing slider

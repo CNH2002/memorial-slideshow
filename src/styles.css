@@ -60,20 +60,84 @@ body {
 
 /* ── Setup screen ─────────────────────────────────────── */
 
+/* Empty state (default) — large centered drop zone, no bars */
 #screen-setup {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.setup-empty-zone {
+  width: 100%;
+  max-width: 520px;
   padding: 2rem;
 }
 
-.setup-inner {
-  width: 100%;
-  max-width: 520px;
+/* Loaded-state zones are hidden until photos land */
+.setup-topbar,
+.setup-grid-wrap,
+.setup-bottombar { display: none; }
+
+/* Loaded state — fixed frame, only the grid scrolls */
+#screen-setup.loaded {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+#screen-setup.loaded .setup-empty-zone { display: none; }
+
+#screen-setup.loaded .setup-topbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid #1e1c1a;
+}
+
+#screen-setup.loaded .setup-grid-wrap {
+  display: block;
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem 1.5rem;
+  min-height: 0;
+}
+
+#screen-setup.loaded .setup-bottombar {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  flex-shrink: 0;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #1e1c1a;
+}
+
+/* Add-more button — top bar, loaded state */
+.add-more-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+  background: none;
+  border: 1px solid #2a2724;
+  color: var(--muted);
+  padding: 0.35rem 0.875rem;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.add-more-btn:hover {
+  border-color: var(--muted);
+  color: var(--text);
+}
+
+.add-more-btn:disabled {
+  opacity: 0.4;
+  cursor: wait;
 }
 
 /* Drop zone */
@@ -119,11 +183,12 @@ body {
   letter-spacing: 0.05em;
 }
 
-/* File counts */
+/* File counts — top bar label */
 .file-counts {
   font-size: 0.85rem;
   color: var(--muted);
-  text-align: center;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Timing */
@@ -279,17 +344,10 @@ body {
 .media-thumb.drag-target  { outline: 2px dashed var(--accent); outline-offset: -2px; }
 .media-thumb.dragging     { opacity: 0.35; }
 
-/* Setup: switch to top-aligned when files are loaded so the grid can scroll */
-#screen-setup.has-files {
-  align-items: flex-start;
-  padding-top: 3rem;
-}
-
-/* Removal confirmation */
+/* Removal confirmation — lives in the top bar in loaded state */
 .removed-confirm {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--muted);
-  text-align: center;
 }
 
 /* Duplicate notice */
@@ -300,6 +358,10 @@ body {
   font-size: 0.85rem;
   color: var(--muted);
 }
+
+/* Ensure [hidden] attribute wins over display:flex on these elements */
+.dup-notice[hidden],
+.removed-confirm[hidden] { display: none; }
 
 .dup-dot {
   flex-shrink: 0;
