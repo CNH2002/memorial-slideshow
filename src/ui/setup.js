@@ -13,6 +13,8 @@ function countLabel(files) {
 }
 
 export function mountSetup(root, { onPlay, onReview }) {
+  const isTouch = window.matchMedia('(hover: none)').matches;
+
   root.innerHTML = `
     <div id="screen-setup">
 
@@ -21,8 +23,8 @@ export function mountSetup(root, { onPlay, onReview }) {
         <div class="drop-zone" id="drop-zone" role="button" tabindex="0">
           <div class="drop-zone-inner">
             <span class="drop-arrow" aria-hidden="true">↓</span>
-            <p class="drop-primary" id="drop-primary">Drop your photos and videos here</p>
-            <p class="drop-secondary">JPG · PNG · HEIC · WebP · MP4 · MOV</p>
+            <p class="drop-primary" id="drop-primary">${isTouch ? 'Tap to add photos and videos' : 'Drop your photos and videos here'}</p>
+            <p class="drop-secondary">${isTouch ? 'Choose from your photo library' : 'JPG · PNG · HEIC · WebP · MP4 · MOV'}</p>
           </div>
         </div>
       </div>

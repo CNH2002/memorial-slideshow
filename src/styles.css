@@ -658,6 +658,66 @@ body {
 .review-group-actions[hidden],
 .review-card-collapsed[hidden] { display: none; }
 
+/* ── Mobile / touch overrides ────────────────────────── */
+
+/* Touch devices have no hover — always show thumb controls and make them tappable */
+@media (hover: none) {
+  .thumb-remove,
+  .thumb-rotate {
+    display: flex;
+    width: 32px;
+    height: 32px;
+    font-size: 17px;
+  }
+
+  .review-rotate-btn {
+    opacity: 1;
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .timing-slider::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+  }
+
+  .timing-slider::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+/* Narrow screens: wrap the top bar and stack the review header */
+@media (max-width: 540px) {
+  #screen-setup.loaded .setup-topbar {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+  }
+
+  .add-more-btn {
+    margin-left: 0;
+  }
+
+  .review-header {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .review-done-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .review-thumbs {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+
+  #screen-review {
+    padding: 1.5rem 1rem 3rem;
+  }
+}
+
 /* ── Player screen ────────────────────────────────────── */
 
 #screen-player {
