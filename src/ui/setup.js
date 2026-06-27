@@ -40,6 +40,10 @@ function captureVideoThumbnail(src) {
   });
 }
 
+// Persists across mounts so video thumbnails don't regenerate every time the
+// user navigates away (player/review) and back to the setup screen.
+const videoThumbCache = new Map();
+
 function countLabel(files) {
   const photos = files.filter(f => f.type === 'photo').length;
   const videos = files.filter(f => f.type === 'video').length;
@@ -114,10 +118,6 @@ export function mountSetup(root, { onPlay, onReview }) {
 
   let dragSrcIdx = null;
 
-  // Cache blob URLs for video thumbnails (keyed by file id); revoke on unmount not needed
-  // since the app is single-page and thumbnails live as long as the session.
-  const videoThumbCache = new Map();
-
   // Touch drag state (long-press to initiate, then drag to reorder)
   let touchActive   = false;
   let touchTimer    = null;
@@ -179,31 +179,34 @@ export function mountSetup(root, { onPlay, onReview }) {
         const img = document.createElement('img');
         img.src       = file.url;
         img.alt       = file.name;
-        img.loading   = 'lazy';
         img.draggable = false;
+        // Blob URLs are already in RAM — eager decode avoids a grey frame on mount
+        img.decode().catch(() => {});
         thumb.appendChild(img);
       } else {
-        // Show a real video frame with a play-icon overlay
-        const img = document.createElement('img');
-        img.alt       = '';  // suppress alt-text flash while frame capture is pending
-        img.draggable = false;
-        img.className = 'video-thumb-img';
-        thumb.appendChild(img);
-
+        // Play-icon overlay shows immediately; img is only inserted once the
+        // frame URL is ready so there's never a broken-image icon visible.
         const overlay = document.createElement('div');
         overlay.className = 'video-play-overlay';
         overlay.setAttribute('aria-hidden', 'true');
         overlay.textContent = '▶';
         thumb.appendChild(overlay);
 
+        const insertThumbImg = (parent, url) => {
+          const img = document.createElement('img');
+          img.alt = ''; img.draggable = false; img.className = 'video-thumb-img';
+          img.src = url;
+          if (file.rotation) img.style.transform = `rotate(${file.rotation}deg)`;
+          parent.insertBefore(img, parent.querySelector('.video-play-overlay'));
+        };
+
         if (videoThumbCache.has(file.id)) {
-          img.src = videoThumbCache.get(file.id);
+          insertThumbImg(thumb, videoThumbCache.get(file.id));
         } else {
           captureVideoThumbnail(file.url).then(url => {
             videoThumbCache.set(file.id, url);
-            // Only update the DOM if this thumb is still in the grid
-            const live = gridEl.querySelector(`[data-id="${file.id}"] .video-thumb-img`);
-            if (live) live.src = url;
+            const live = gridEl.querySelector(`[data-id="${file.id}"]`);
+            if (live && !live.querySelector('.video-thumb-img')) insertThumbImg(live, url);
           }).catch(() => {});
         }
       }
