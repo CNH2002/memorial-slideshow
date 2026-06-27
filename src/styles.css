@@ -127,12 +127,18 @@ body {
   background: #0f0e0d;
 }
 
+/* When the app isn't installed, the install steps get an accent border
+   so the user immediately knows there's a required first action. */
+.album-guide--needs-install {
+  border-color: var(--accent);
+}
+
 .album-guide-title {
   font-size: 0.78rem;
   color: var(--muted);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  margin-bottom: 0.6rem;
+  margin-bottom: 0.75rem;
 }
 
 .album-guide-steps {
@@ -140,7 +146,7 @@ body {
   padding-left: 1.1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
 }
 
 .album-guide-steps li {
@@ -152,6 +158,26 @@ body {
 .album-guide-steps strong {
   color: var(--accent);
   font-weight: 500;
+}
+
+/* Install steps (steps 1-2 before the app is on the Home Screen) */
+.album-guide-steps .install-step {
+  color: var(--accent);
+}
+
+.album-guide-steps .install-step strong {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Divider between install steps and share steps */
+.album-guide-steps .install-step + li:not(.install-step) {
+  margin-top: 0.35rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid #2a2724;
+  list-style: none;
+  margin-left: -1.1rem;
+  padding-left: 1.1rem;
 }
 
 @media (hover: hover) {

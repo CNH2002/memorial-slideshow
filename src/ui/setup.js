@@ -54,7 +54,43 @@ function countLabel(files) {
 }
 
 export function mountSetup(root, { onPlay, onReview }) {
-  const isTouch = window.matchMedia('(hover: none)').matches;
+  const isTouch     = window.matchMedia('(hover: none)').matches;
+  const isIOS       = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  // true when launched from the Home Screen icon (not the Safari browser tab)
+  const isInstalled = window.navigator.standalone === true ||
+                      window.matchMedia('(display-mode: standalone)').matches;
+
+  // Album import guide shown below the drop zone on touch devices.
+  // When running in Safari (not installed) the Share Target doesn't appear
+  // in the iOS share sheet, so we lead with the install step first.
+  function albumGuideHTML() {
+    if (!isTouch) return '';
+    if (isIOS && !isInstalled) {
+      return `
+      <div class="album-guide album-guide--needs-install">
+        <p class="album-guide-title">To import a full album at once</p>
+        <ol class="album-guide-steps">
+          <li class="install-step">
+            Tap the <strong>Share ⬆</strong> button at the bottom of Safari
+            → <strong>Add to Home Screen</strong> → <strong>Add</strong>
+          </li>
+          <li class="install-step">Open <strong>Slideshow</strong> from your Home Screen</li>
+          <li>In <strong>Photos</strong>: open your album → tap <strong>Select</strong></li>
+          <li>Tap <strong>Select All</strong> (appears top-left)</li>
+          <li>Tap <strong>Share ⬆</strong> → choose <strong>Slideshow</strong></li>
+        </ol>
+      </div>`;
+    }
+    return `
+    <div class="album-guide">
+      <p class="album-guide-title">To import a full album at once</p>
+      <ol class="album-guide-steps">
+        <li>In <strong>Photos</strong>: open your album → tap <strong>Select</strong></li>
+        <li>Tap <strong>Select All</strong> (appears top-left)</li>
+        <li>Tap <strong>Share ⬆</strong> → choose <strong>Slideshow</strong></li>
+      </ol>
+    </div>`;
+  }
 
   root.innerHTML = `
     <div id="screen-setup">
@@ -65,19 +101,11 @@ export function mountSetup(root, { onPlay, onReview }) {
           <div class="drop-zone-inner">
             <span class="drop-arrow" aria-hidden="true">↓</span>
             <p class="drop-primary" id="drop-primary">${isTouch ? 'Tap to add photos and videos' : 'Drop your photos and videos here'}</p>
-            <p class="drop-secondary">${isTouch ? 'Select multiple photos from any album in the picker' : 'JPG · PNG · HEIC · WebP · MP4 · MOV'}</p>
+            <p class="drop-secondary">${isTouch ? 'Or import a full album — see below' : 'JPG · PNG · HEIC · WebP · MP4 · MOV'}</p>
           </div>
         </div>
         <button class="folder-btn" id="folder-btn" type="button">or pick a folder</button>
-        ${isTouch ? `
-        <div class="album-guide">
-          <p class="album-guide-title">To import an entire album at once:</p>
-          <ol class="album-guide-steps">
-            <li>Open the <strong>Photos</strong> app and go to your album</li>
-            <li>Tap <strong>Select</strong> then <strong>Select All</strong></li>
-            <li>Tap the <strong>Share</strong> icon and choose <strong>Slideshow</strong></li>
-          </ol>
-        </div>` : ''}
+        ${albumGuideHTML()}
       </div>
 
       <!-- Loaded state: top bar (file count + similar notice + add-more) -->
