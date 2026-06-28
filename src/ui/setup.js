@@ -1,7 +1,8 @@
 import { processFiles, collectFromEntry } from '../files.js';
-import { state, addFiles, removeFile, reorderFile, rotateFile, restoreFiles } from '../state.js';
+import { state, addFiles, clearFiles, removeFile, reorderFile, rotateFile, restoreFiles } from '../state.js';
 import { detectDuplicates, detectExactGroups } from '../duplicates.js';
 import { showUndoToast, dismissToast } from './toast.js';
+import { dbAdd, dbUpdate, dbRemove, dbSaveOrder, dbClear } from '../db.js';
 
 // Module-level: updated each mount so shared files always go to the active instance.
 let _activeHandleFiles = null;
@@ -119,6 +120,7 @@ export function mountSetup(root, { onPlay, onReview }) {
         <p class="removed-confirm" id="removed-confirm" hidden></p>
         <button class="add-more-btn" id="add-more-btn">+ Add more</button>
         <button class="add-more-btn add-folder-btn" id="add-folder-btn">+ Add folder</button>
+        <button class="clear-all-btn" id="clear-all-btn" aria-label="Remove all and start over">Clear all</button>
       </div>
 
       <!-- Loaded state: scrolling grid (only this zone scrolls) -->
@@ -134,6 +136,7 @@ export function mountSetup(root, { onPlay, onReview }) {
         </div>
         <input type="range" id="timing-slider" class="timing-slider" min="1" max="15" value="${state.settings.photoDuration}">
         <button class="play-btn" id="play-btn" disabled>Play slideshow</button>
+        <p class="saved-indicator" id="saved-indicator" hidden>Saved on this device</p>
       </div>
 
       <input type="file" id="file-input" multiple accept="image/*,video/*,.heic,.heif,.mov" hidden>
@@ -158,6 +161,7 @@ export function mountSetup(root, { onPlay, onReview }) {
   const folderBtn    = root.querySelector('#folder-btn');
 
   const removedConfirm = root.querySelector('#removed-confirm');
+  const savedIndicator = root.querySelector('#saved-indicator');
 
   let dragSrcIdx = null;
 
@@ -260,6 +264,8 @@ export function mountSetup(root, { onPlay, onReview }) {
       rotBtn.addEventListener('click', async e => {
         e.stopPropagation();
         await rotateFile(file.id);
+        const updated = state.files.find(f => f.id === file.id);
+        if (updated) dbUpdate(updated);
         refresh();
       });
       thumb.appendChild(rotBtn);
@@ -278,9 +284,11 @@ export function mountSetup(root, { onPlay, onReview }) {
         const snapshot = { file, idx };
         dismissToast();
         removeFile(file.id);
+        dbRemove(file.id, state.files.map(f => f.id));
         refresh();
         showUndoToast('1 removed', () => {
           restoreFiles([snapshot]);
+          dbAdd([snapshot.file], state.files.map(f => f.id));
           refresh();
           if (state.files.filter(f => f.type === 'photo').length >= 2) runDetection();
         });
@@ -310,6 +318,7 @@ export function mountSetup(root, { onPlay, onReview }) {
         thumb.classList.remove('drag-target');
         if (dragSrcIdx !== null && dragSrcIdx !== idx) {
           reorderFile(dragSrcIdx, idx);
+          dbSaveOrder(state.files.map(f => f.id));
           refresh();
         }
       });
@@ -355,7 +364,11 @@ export function mountSetup(root, { onPlay, onReview }) {
           const el   = document.elementFromPoint(t.clientX, t.clientY)?.closest?.('.media-thumb');
           const tIdx = el ? +el.dataset.idx : null;
           gridEl.querySelectorAll('.drag-target').forEach(d => d.classList.remove('drag-target'));
-          if (tIdx !== null && tIdx !== idx) { reorderFile(idx, tIdx); refresh(); }
+          if (tIdx !== null && tIdx !== idx) {
+            reorderFile(idx, tIdx);
+            dbSaveOrder(state.files.map(f => f.id));
+            refresh();
+          }
         }
         thumb.classList.remove('dragging');
         touchActive = false;
@@ -370,8 +383,9 @@ export function mountSetup(root, { onPlay, onReview }) {
 
   function refresh() {
     const hasFiles = state.files.length > 0;
-    countsEl.textContent  = countLabel(state.files);
-    playBtn.disabled      = !hasFiles;
+    countsEl.textContent      = countLabel(state.files);
+    playBtn.disabled          = !hasFiles;
+    savedIndicator.hidden     = !hasFiles;
     const d = state.settings.photoDuration;
     timingVal.textContent = `${d} second${d === 1 ? '' : 's'}`;
     slider.value          = d;
@@ -383,6 +397,8 @@ export function mountSetup(root, { onPlay, onReview }) {
   async function handleFiles(rawFiles) {
     const arr = Array.from(rawFiles).filter(Boolean);
     if (!arr.length) return;
+    // Snapshot IDs before any changes so we can diff after dedup to find net-new files.
+    const preImportIds = new Set(state.files.map(f => f.id));
     dropZone.classList.add('loading');
     addMoreBtn.disabled = true;
     addFolderBtn.disabled = true;
@@ -426,6 +442,11 @@ export function mountSetup(root, { onPlay, onReview }) {
       removedConfirm.hidden = false;
       setTimeout(() => { removedConfirm.hidden = true; }, 5000);
     }
+
+    // Persist to IDB: only files that are actually new (survived dedup and
+    // weren't already in the store before this import).
+    const newFiles = state.files.filter(f => !preImportIds.has(f.id));
+    if (newFiles.length) dbAdd(newFiles, state.files.map(f => f.id));
 
     runDetection();
   }
@@ -514,6 +535,13 @@ export function mountSetup(root, { onPlay, onReview }) {
   });
 
   playBtn.addEventListener('click', () => { if (state.files.length) { dismissToast(); onPlay(); } });
+
+  root.querySelector('#clear-all-btn').addEventListener('click', () => {
+    if (!confirm('Remove all photos and videos?')) return;
+    clearFiles(); // revokes all object URLs
+    dbClear();
+    refresh();
+  });
 
   refresh();
 

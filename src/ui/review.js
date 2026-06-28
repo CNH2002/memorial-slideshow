@@ -1,4 +1,5 @@
 import { state, removeFile, rotateFile } from '../state.js';
+import { dbUpdate } from '../db.js';
 
 export function mountReview(root, { onDone }) {
   // Filter each group to only files that still exist in state.
@@ -69,6 +70,7 @@ export function mountReview(root, { onDone }) {
         e.stopPropagation();
         try {
           await rotateFile(file.id);
+          dbUpdate(file); // file is mutated in-place by rotateFile
           img.src = '';
           img.src = file.url;
         } catch (err) {

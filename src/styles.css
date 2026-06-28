@@ -234,6 +234,30 @@ body {
   cursor: wait;
 }
 
+/* Clear-all — topbar, far right; destructive so turns red on hover */
+.clear-all-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s;
+}
+.clear-all-btn:hover { color: #c44; }
+
+/* Saved-on-device indicator — bottombar, below the play button */
+.saved-indicator {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
 /* Drop zone */
 .drop-zone {
   border: 1px solid #2a2724;
