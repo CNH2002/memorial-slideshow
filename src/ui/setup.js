@@ -1,41 +1,66 @@
 import { processFiles, collectFromEntry } from '../files.js';
-import { state, addFiles, clearFiles, removeFile, reorderFile, rotateFile, restoreFiles } from '../state.js';
+import {
+  state,
+  addFiles,
+  clearFiles,
+  removeFile,
+  reorderFile,
+  rotateFile,
+  restoreFiles,
+} from '../state.js';
 import { detectDuplicates, detectExactGroups } from '../duplicates.js';
 import { showUndoToast, dismissToast } from './toast.js';
 import { dbAdd, dbUpdate, dbRemove, dbSaveOrder, dbClear } from '../db.js';
 
 // Module-level: updated each mount so shared files always go to the active instance.
 let _activeHandleFiles = null;
-window.addEventListener('slideshow:shared-files', e => _activeHandleFiles?.(e.detail));
+window.addEventListener('slideshow:shared-files', (e) => _activeHandleFiles?.(e.detail));
 
 // Capture the first readable frame of a video as a square-cropped blob URL.
 function captureVideoThumbnail(src) {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
-    video.muted      = true;
+    video.muted = true;
     video.playsInline = true;
-    video.preload    = 'metadata';
+    video.preload = 'metadata';
 
-    const fail = () => { video.src = ''; reject(new Error('thumb')); };
+    const fail = () => {
+      video.src = '';
+      reject(new Error('thumb'));
+    };
 
     video.addEventListener('error', fail, { once: true });
-    video.addEventListener('loadedmetadata', () => {
-      video.currentTime = Math.min(0.5, video.duration / 4 || 0);
-    }, { once: true });
-    video.addEventListener('seeked', () => {
-      try {
-        const W = video.videoWidth, H = video.videoHeight;
-        if (!W || !H) { fail(); return; }
-        const size = Math.min(W, H);
-        const canvas = document.createElement('canvas');
-        canvas.width = canvas.height = size;
-        canvas.getContext('2d').drawImage(
-          video, (W - size) / 2, (H - size) / 2, size, size, 0, 0, size, size
-        );
-        video.src = '';
-        canvas.toBlob(b => b ? resolve(URL.createObjectURL(b)) : fail(), 'image/jpeg', 0.82);
-      } catch { fail(); }
-    }, { once: true });
+    video.addEventListener(
+      'loadedmetadata',
+      () => {
+        video.currentTime = Math.min(0.5, video.duration / 4 || 0);
+      },
+      { once: true }
+    );
+    video.addEventListener(
+      'seeked',
+      () => {
+        try {
+          const W = video.videoWidth,
+            H = video.videoHeight;
+          if (!W || !H) {
+            fail();
+            return;
+          }
+          const size = Math.min(W, H);
+          const canvas = document.createElement('canvas');
+          canvas.width = canvas.height = size;
+          canvas
+            .getContext('2d')
+            .drawImage(video, (W - size) / 2, (H - size) / 2, size, size, 0, 0, size, size);
+          video.src = '';
+          canvas.toBlob((b) => (b ? resolve(URL.createObjectURL(b)) : fail()), 'image/jpeg', 0.82);
+        } catch {
+          fail();
+        }
+      },
+      { once: true }
+    );
 
     video.src = src;
   });
@@ -46,20 +71,20 @@ function captureVideoThumbnail(src) {
 const videoThumbCache = new Map();
 
 function countLabel(files) {
-  const photos = files.filter(f => f.type === 'photo').length;
-  const videos = files.filter(f => f.type === 'video').length;
-  const parts  = [];
+  const photos = files.filter((f) => f.type === 'photo').length;
+  const videos = files.filter((f) => f.type === 'video').length;
+  const parts = [];
   if (photos) parts.push(`${photos} photo${photos === 1 ? '' : 's'}`);
   if (videos) parts.push(`${videos} video${videos === 1 ? '' : 's'}`);
   return parts.join(' · ');
 }
 
 export function mountSetup(root, { onPlay, onReview }) {
-  const isTouch     = window.matchMedia('(hover: none)').matches;
-  const isIOS       = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isTouch = window.matchMedia('(hover: none)').matches;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   // true when launched from the Home Screen icon (not the Safari browser tab)
-  const isInstalled = window.navigator.standalone === true ||
-                      window.matchMedia('(display-mode: standalone)').matches;
+  const isInstalled =
+    window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
 
   // Album import guide shown below the drop zone on touch devices.
   // When running in Safari (not installed) the Share Target doesn't appear
@@ -144,21 +169,21 @@ export function mountSetup(root, { onPlay, onReview }) {
     </div>
   `;
 
-  const screenEl     = root.querySelector('#screen-setup');
-  const dropZone     = root.querySelector('#drop-zone');
-  const fileInput    = root.querySelector('#file-input');
-  const folderInput  = root.querySelector('#folder-input');
-  const dropLabel    = root.querySelector('#drop-primary');
-  const countsEl     = root.querySelector('#file-counts');
-  const gridEl       = root.querySelector('#media-grid');
-  const dupNotice    = root.querySelector('#dup-notice');
-  const dupMsg       = root.querySelector('#dup-message');
-  const slider       = root.querySelector('#timing-slider');
-  const timingVal    = root.querySelector('#timing-value');
-  const playBtn      = root.querySelector('#play-btn');
-  const addMoreBtn   = root.querySelector('#add-more-btn');
+  const screenEl = root.querySelector('#screen-setup');
+  const dropZone = root.querySelector('#drop-zone');
+  const fileInput = root.querySelector('#file-input');
+  const folderInput = root.querySelector('#folder-input');
+  const dropLabel = root.querySelector('#drop-primary');
+  const countsEl = root.querySelector('#file-counts');
+  const gridEl = root.querySelector('#media-grid');
+  const dupNotice = root.querySelector('#dup-notice');
+  const dupMsg = root.querySelector('#dup-message');
+  const slider = root.querySelector('#timing-slider');
+  const timingVal = root.querySelector('#timing-value');
+  const playBtn = root.querySelector('#play-btn');
+  const addMoreBtn = root.querySelector('#add-more-btn');
   const addFolderBtn = root.querySelector('#add-folder-btn');
-  const folderBtn    = root.querySelector('#folder-btn');
+  const folderBtn = root.querySelector('#folder-btn');
 
   const removedConfirm = root.querySelector('#removed-confirm');
   const savedIndicator = root.querySelector('#saved-indicator');
@@ -166,10 +191,10 @@ export function mountSetup(root, { onPlay, onReview }) {
   let dragSrcIdx = null;
 
   // Touch drag state (long-press to initiate, then drag to reorder)
-  let touchActive   = false;
-  let touchTimer    = null;
-  let touchStartX   = 0;
-  let touchStartY   = 0;
+  let touchActive = false;
+  let touchTimer = null;
+  let touchStartX = 0;
+  let touchStartY = 0;
 
   function renderDupNotice() {
     const n = state.dupGroups.length;
@@ -180,7 +205,7 @@ export function mountSetup(root, { onPlay, onReview }) {
 
   let detectionGen = 0;
   function runDetection() {
-    const photoCount = state.files.filter(f => f.type === 'photo').length;
+    const photoCount = state.files.filter((f) => f.type === 'photo').length;
     if (photoCount < 2) {
       state.dupGroups = [];
       renderDupNotice();
@@ -191,12 +216,12 @@ export function mountSetup(root, { onPlay, onReview }) {
     dupMsg.textContent = 'Checking for similar photos…';
     const gen = ++detectionGen;
     detectDuplicates(state.files)
-      .then(groups => {
+      .then((groups) => {
         if (gen !== detectionGen) return;
         state.dupGroups = groups;
         renderDupNotice();
       })
-      .catch(err => {
+      .catch((err) => {
         console.error('[duplicates]', err);
         if (gen !== detectionGen) return;
         state.dupGroups = [];
@@ -205,28 +230,31 @@ export function mountSetup(root, { onPlay, onReview }) {
   }
 
   root.querySelector('#btn-review').addEventListener('click', () => {
-    if (state.dupGroups.length > 0) { dismissToast(); onReview(); }
+    if (state.dupGroups.length > 0) {
+      dismissToast();
+      onReview();
+    }
   });
 
   function renderGrid() {
     // Clear any stale drag state from a previous render
     clearTimeout(touchTimer);
-    touchTimer    = null;
-    touchActive   = false;
-    dragSrcIdx    = null;
+    touchTimer = null;
+    touchActive = false;
+    dragSrcIdx = null;
     gridEl.innerHTML = '';
     state.files.forEach((file, idx) => {
       const thumb = document.createElement('div');
-      thumb.className   = 'media-thumb';
-      thumb.draggable   = true;
-      thumb.dataset.id  = file.id;
+      thumb.className = 'media-thumb';
+      thumb.draggable = true;
+      thumb.dataset.id = file.id;
       thumb.dataset.idx = idx;
 
       if (file.type === 'photo') {
         const img = document.createElement('img');
-        img.src       = file.url;
-        img.alt       = file.name;
-        img.loading   = 'lazy';
+        img.src = file.url;
+        img.alt = file.name;
+        img.loading = 'lazy';
         img.draggable = false;
         thumb.appendChild(img);
       } else {
@@ -240,7 +268,9 @@ export function mountSetup(root, { onPlay, onReview }) {
 
         const insertThumbImg = (parent, url) => {
           const img = document.createElement('img');
-          img.alt = ''; img.draggable = false; img.className = 'video-thumb-img';
+          img.alt = '';
+          img.draggable = false;
+          img.className = 'video-thumb-img';
           img.src = url;
           if (file.rotation) img.style.transform = `rotate(${file.rotation}deg)`;
           parent.insertBefore(img, parent.querySelector('.video-play-overlay'));
@@ -249,11 +279,13 @@ export function mountSetup(root, { onPlay, onReview }) {
         if (videoThumbCache.has(file.id)) {
           insertThumbImg(thumb, videoThumbCache.get(file.id));
         } else {
-          captureVideoThumbnail(file.url).then(url => {
-            videoThumbCache.set(file.id, url);
-            const live = gridEl.querySelector(`[data-id="${file.id}"]`);
-            if (live && !live.querySelector('.video-thumb-img')) insertThumbImg(live, url);
-          }).catch(() => {});
+          captureVideoThumbnail(file.url)
+            .then((url) => {
+              videoThumbCache.set(file.id, url);
+              const live = gridEl.querySelector(`[data-id="${file.id}"]`);
+              if (live && !live.querySelector('.video-thumb-img')) insertThumbImg(live, url);
+            })
+            .catch(() => {});
         }
       }
 
@@ -261,10 +293,10 @@ export function mountSetup(root, { onPlay, onReview }) {
       rotBtn.className = 'thumb-rotate';
       rotBtn.setAttribute('aria-label', 'Rotate 90°');
       rotBtn.textContent = '↺';
-      rotBtn.addEventListener('click', async e => {
+      rotBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         await rotateFile(file.id);
-        const updated = state.files.find(f => f.id === file.id);
+        const updated = state.files.find((f) => f.id === file.id);
         if (updated) dbUpdate(updated);
         refresh();
       });
@@ -279,24 +311,30 @@ export function mountSetup(root, { onPlay, onReview }) {
       removeBtn.className = 'thumb-remove';
       removeBtn.setAttribute('aria-label', 'Remove');
       removeBtn.textContent = '×';
-      removeBtn.addEventListener('click', e => {
+      removeBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const snapshot = { file, idx };
         dismissToast();
         removeFile(file.id);
-        dbRemove(file.id, state.files.map(f => f.id));
+        dbRemove(
+          file.id,
+          state.files.map((f) => f.id)
+        );
         refresh();
         showUndoToast('1 removed', () => {
           restoreFiles([snapshot]);
-          dbAdd([snapshot.file], state.files.map(f => f.id));
+          dbAdd(
+            [snapshot.file],
+            state.files.map((f) => f.id)
+          );
           refresh();
-          if (state.files.filter(f => f.type === 'photo').length >= 2) runDetection();
+          if (state.files.filter((f) => f.type === 'photo').length >= 2) runDetection();
         });
       });
       thumb.appendChild(removeBtn);
 
       // Drag-to-reorder
-      thumb.addEventListener('dragstart', e => {
+      thumb.addEventListener('dragstart', (e) => {
         dragSrcIdx = idx;
         e.dataTransfer.effectAllowed = 'move';
         thumb.classList.add('dragging');
@@ -304,77 +342,85 @@ export function mountSetup(root, { onPlay, onReview }) {
       thumb.addEventListener('dragend', () => {
         dragSrcIdx = null;
         thumb.classList.remove('dragging');
-        gridEl.querySelectorAll('.drag-target').forEach(el => el.classList.remove('drag-target'));
+        gridEl.querySelectorAll('.drag-target').forEach((el) => el.classList.remove('drag-target'));
       });
-      thumb.addEventListener('dragover', e => {
+      thumb.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.stopPropagation();
         if (dragSrcIdx !== null && dragSrcIdx !== idx) thumb.classList.add('drag-target');
       });
       thumb.addEventListener('dragleave', () => thumb.classList.remove('drag-target'));
-      thumb.addEventListener('drop', e => {
+      thumb.addEventListener('drop', (e) => {
         e.preventDefault();
         e.stopPropagation();
         thumb.classList.remove('drag-target');
         if (dragSrcIdx !== null && dragSrcIdx !== idx) {
           reorderFile(dragSrcIdx, idx);
-          dbSaveOrder(state.files.map(f => f.id));
+          dbSaveOrder(state.files.map((f) => f.id));
           refresh();
         }
       });
 
       // ── Touch drag-to-reorder (long press → drag) ────────
-      thumb.addEventListener('touchstart', e => {
-        if (touchActive) return;
-        const t = e.touches[0];
-        touchStartX = t.clientX;
-        touchStartY = t.clientY;
-        touchTimer = setTimeout(() => {
-          touchActive = true;
-          dragSrcIdx  = idx;
-          thumb.classList.add('dragging');
-          navigator.vibrate?.(20);
-        }, 350);
-      }, { passive: true });
+      thumb.addEventListener(
+        'touchstart',
+        (e) => {
+          if (touchActive) return;
+          const t = e.touches[0];
+          touchStartX = t.clientX;
+          touchStartY = t.clientY;
+          touchTimer = setTimeout(() => {
+            touchActive = true;
+            dragSrcIdx = idx;
+            thumb.classList.add('dragging');
+            navigator.vibrate?.(20);
+          }, 350);
+        },
+        { passive: true }
+      );
 
-      thumb.addEventListener('touchmove', e => {
-        if (!touchActive) {
-          if (touchTimer) {
-            const t = e.touches[0];
-            if (Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY) > 8) {
-              clearTimeout(touchTimer);
-              touchTimer = null;
+      thumb.addEventListener(
+        'touchmove',
+        (e) => {
+          if (!touchActive) {
+            if (touchTimer) {
+              const t = e.touches[0];
+              if (Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY) > 8) {
+                clearTimeout(touchTimer);
+                touchTimer = null;
+              }
             }
+            return;
           }
-          return;
-        }
-        e.preventDefault();
-        const t   = e.touches[0];
-        const el  = document.elementFromPoint(t.clientX, t.clientY)?.closest?.('.media-thumb');
-        gridEl.querySelectorAll('.drag-target').forEach(d => d.classList.remove('drag-target'));
-        if (el && el !== thumb) el.classList.add('drag-target');
-      }, { passive: false });
+          e.preventDefault();
+          const t = e.touches[0];
+          const el = document.elementFromPoint(t.clientX, t.clientY)?.closest?.('.media-thumb');
+          gridEl.querySelectorAll('.drag-target').forEach((d) => d.classList.remove('drag-target'));
+          if (el && el !== thumb) el.classList.add('drag-target');
+        },
+        { passive: false }
+      );
 
-      const endTouchDrag = e => {
+      const endTouchDrag = (e) => {
         clearTimeout(touchTimer);
         touchTimer = null;
         if (!touchActive) return;
         const t = e.changedTouches?.[0] ?? e.touches?.[0];
         if (t) {
-          const el   = document.elementFromPoint(t.clientX, t.clientY)?.closest?.('.media-thumb');
+          const el = document.elementFromPoint(t.clientX, t.clientY)?.closest?.('.media-thumb');
           const tIdx = el ? +el.dataset.idx : null;
-          gridEl.querySelectorAll('.drag-target').forEach(d => d.classList.remove('drag-target'));
+          gridEl.querySelectorAll('.drag-target').forEach((d) => d.classList.remove('drag-target'));
           if (tIdx !== null && tIdx !== idx) {
             reorderFile(idx, tIdx);
-            dbSaveOrder(state.files.map(f => f.id));
+            dbSaveOrder(state.files.map((f) => f.id));
             refresh();
           }
         }
         thumb.classList.remove('dragging');
         touchActive = false;
-        dragSrcIdx  = null;
+        dragSrcIdx = null;
       };
-      thumb.addEventListener('touchend',    endTouchDrag);
+      thumb.addEventListener('touchend', endTouchDrag);
       thumb.addEventListener('touchcancel', endTouchDrag);
 
       gridEl.appendChild(thumb);
@@ -383,12 +429,12 @@ export function mountSetup(root, { onPlay, onReview }) {
 
   function refresh() {
     const hasFiles = state.files.length > 0;
-    countsEl.textContent      = countLabel(state.files);
-    playBtn.disabled          = !hasFiles;
-    savedIndicator.hidden     = !hasFiles;
+    countsEl.textContent = countLabel(state.files);
+    playBtn.disabled = !hasFiles;
+    savedIndicator.hidden = !hasFiles;
     const d = state.settings.photoDuration;
     timingVal.textContent = `${d} second${d === 1 ? '' : 's'}`;
-    slider.value          = d;
+    slider.value = d;
     screenEl.classList.toggle('loaded', hasFiles);
     renderGrid();
     renderDupNotice();
@@ -398,7 +444,7 @@ export function mountSetup(root, { onPlay, onReview }) {
     const arr = Array.from(rawFiles).filter(Boolean);
     if (!arr.length) return;
     // Snapshot IDs before any changes so we can diff after dedup to find net-new files.
-    const preImportIds = new Set(state.files.map(f => f.id));
+    const preImportIds = new Set(state.files.map((f) => f.id));
     dropZone.classList.add('loading');
     addMoreBtn.disabled = true;
     addFolderBtn.disabled = true;
@@ -421,7 +467,7 @@ export function mountSetup(root, { onPlay, onReview }) {
     refresh();
 
     // Show checking indicator immediately so there's no silent gap before detection starts
-    if (state.files.filter(f => f.type === 'photo').length >= 2) {
+    if (state.files.filter((f) => f.type === 'photo').length >= 2) {
       dupNotice.hidden = false;
       dupNotice.classList.add('checking');
       dupMsg.textContent = 'Checking for similar photos…';
@@ -431,41 +477,50 @@ export function mountSetup(root, { onPlay, onReview }) {
     const exactGroups = await detectExactGroups(state.files);
     let autoRemoved = 0;
     for (const group of exactGroups) {
-      const best = group.reduce((a, b) => a.blob.size > b.blob.size ? a : b);
+      const best = group.reduce((a, b) => (a.blob.size > b.blob.size ? a : b));
       for (const f of group) {
-        if (f.id !== best.id) { removeFile(f.id); autoRemoved++; }
+        if (f.id !== best.id) {
+          removeFile(f.id);
+          autoRemoved++;
+        }
       }
     }
     if (autoRemoved > 0) {
       refresh();
       removedConfirm.textContent = `${autoRemoved} near-identical photo${autoRemoved === 1 ? '' : 's'} removed automatically.`;
       removedConfirm.hidden = false;
-      setTimeout(() => { removedConfirm.hidden = true; }, 5000);
+      setTimeout(() => {
+        removedConfirm.hidden = true;
+      }, 5000);
     }
 
     // Persist to IDB: only files that are actually new (survived dedup and
     // weren't already in the store before this import).
-    const newFiles = state.files.filter(f => !preImportIds.has(f.id));
-    if (newFiles.length) dbAdd(newFiles, state.files.map(f => f.id));
+    const newFiles = state.files.filter((f) => !preImportIds.has(f.id));
+    if (newFiles.length)
+      dbAdd(
+        newFiles,
+        state.files.map((f) => f.id)
+      );
 
     runDetection();
   }
 
   // Block the browser context menu on the grid so long-press drag isn't
   // interrupted by the iOS "Save / Share" sheet or Android's image menu.
-  gridEl.addEventListener('contextmenu', e => e.preventDefault());
+  gridEl.addEventListener('contextmenu', (e) => e.preventDefault());
 
   // File drop — on screenEl so it works in both empty and loaded states
-  screenEl.addEventListener('dragover', e => {
+  screenEl.addEventListener('dragover', (e) => {
     if (dragSrcIdx !== null) return;
     if (!e.dataTransfer.types.includes('Files')) return;
     e.preventDefault();
     dropZone.classList.add('drag-over');
   });
-  screenEl.addEventListener('dragleave', e => {
+  screenEl.addEventListener('dragleave', (e) => {
     if (!screenEl.contains(e.relatedTarget)) dropZone.classList.remove('drag-over');
   });
-  screenEl.addEventListener('drop', async e => {
+  screenEl.addEventListener('drop', async (e) => {
     e.preventDefault();
     dropZone.classList.remove('drag-over');
     if (dragSrcIdx !== null) return; // internal thumb drag
@@ -478,7 +533,7 @@ export function mountSetup(root, { onPlay, onReview }) {
         if (item.kind !== 'file') continue;
         itemRefs.push({
           entry: item.webkitGetAsEntry?.() || null,
-          file:  item.getAsFile() || null,
+          file: item.getAsFile() || null,
         });
       }
     }
@@ -487,7 +542,7 @@ export function mountSetup(root, { onPlay, onReview }) {
     for (const { entry, file } of itemRefs) {
       if (entry) {
         try {
-          files.push(...await collectFromEntry(entry));
+          files.push(...(await collectFromEntry(entry)));
         } catch {
           if (file) files.push(file);
         }
@@ -505,7 +560,7 @@ export function mountSetup(root, { onPlay, onReview }) {
 
   // Click-to-browse (empty state)
   dropZone.addEventListener('click', () => fileInput.click());
-  dropZone.addEventListener('keydown', e => {
+  dropZone.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' || e.key === ' ') fileInput.click();
   });
 
@@ -534,7 +589,12 @@ export function mountSetup(root, { onPlay, onReview }) {
     timingVal.textContent = `${v} second${v === 1 ? '' : 's'}`;
   });
 
-  playBtn.addEventListener('click', () => { if (state.files.length) { dismissToast(); onPlay(); } });
+  playBtn.addEventListener('click', () => {
+    if (state.files.length) {
+      dismissToast();
+      onPlay();
+    }
+  });
 
   root.querySelector('#clear-all-btn').addEventListener('click', () => {
     if (!confirm('Remove all photos and videos?')) return;
@@ -546,7 +606,7 @@ export function mountSetup(root, { onPlay, onReview }) {
   refresh();
 
   // Re-run detection on every mount so returning from review/player always refreshes the notice.
-  if (state.files.filter(f => f.type === 'photo').length >= 2) runDetection();
+  if (state.files.filter((f) => f.type === 'photo').length >= 2) runDetection();
 
   // Register this mount's handleFiles as the target for Web Share Target deliveries.
   _activeHandleFiles = handleFiles;

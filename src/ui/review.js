@@ -6,8 +6,8 @@ export function mountReview(root, { onDone }) {
   // Files deleted from the grid after detection ran would otherwise appear as
   // broken images (their object URLs were revoked by removeFile).
   const groups = state.dupGroups
-    .map(g => ({ ...g, files: g.files.filter(f => state.files.some(sf => sf.id === f.id)) }))
-    .filter(g => g.files.length >= 2);
+    .map((g) => ({ ...g, files: g.files.filter((f) => state.files.some((sf) => sf.id === f.id)) }))
+    .filter((g) => g.files.length >= 2);
 
   if (groups.length === 0) {
     state.dupGroups = [];
@@ -28,8 +28,8 @@ export function mountReview(root, { onDone }) {
     </div>
   `;
 
-  const groupsEl  = root.querySelector('#review-groups');
-  const doneBtn   = root.querySelector('#review-done');
+  const groupsEl = root.querySelector('#review-groups');
+  const doneBtn = root.querySelector('#review-done');
   const removeSets = groups.map(() => new Set());
 
   function updateDoneBtn() {
@@ -45,14 +45,15 @@ export function mountReview(root, { onDone }) {
     const label = document.createElement('p');
     label.className = 'review-group-label';
     const prefix = groups.length > 1 ? `Group ${gi + 1} of ${groups.length}  ·  ` : '';
-    label.textContent = prefix + (reason === 'exact' ? 'Near-exact duplicates' : 'Visually similar');
+    label.textContent =
+      prefix + (reason === 'exact' ? 'Near-exact duplicates' : 'Visually similar');
     card.appendChild(label);
 
     // Scrolling grid of photos
     const thumbsRow = document.createElement('div');
     thumbsRow.className = 'review-thumbs';
 
-    files.forEach(file => {
+    files.forEach((file) => {
       const thumb = document.createElement('div');
       thumb.className = 'review-thumb';
       thumb.dataset.id = file.id;
@@ -66,7 +67,7 @@ export function mountReview(root, { onDone }) {
       rotBtn.className = 'review-rotate-btn';
       rotBtn.setAttribute('aria-label', 'Rotate 90°');
       rotBtn.textContent = '↺';
-      rotBtn.addEventListener('click', async e => {
+      rotBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         try {
           await rotateFile(file.id);
@@ -131,30 +132,31 @@ export function mountReview(root, { onDone }) {
     collapsedKeepAll.addEventListener('click', doKeepAll);
 
     removeAllBtn.addEventListener('click', () => {
-      files.forEach(f => removeSets[gi].add(f.id));
+      files.forEach((f) => removeSets[gi].add(f.id));
       syncGroupState();
     });
 
     // Re-render this group's visual state from removeSets[gi].
     // Called after every mark/unmark action so the grid always matches.
     function syncGroupState() {
-      const visibleCount = files.filter(f => !removeSets[gi].has(f.id)).length;
+      const visibleCount = files.filter((f) => !removeSets[gi].has(f.id)).length;
       const collapse = visibleCount === 0;
 
-      files.forEach(f => {
+      files.forEach((f) => {
         const t = thumbsRow.querySelector(`[data-id="${f.id}"]`);
         if (t) t.hidden = removeSets[gi].has(f.id);
       });
 
-      thumbsRow.hidden  = collapse;
+      thumbsRow.hidden = collapse;
       groupActions.hidden = collapse;
-      collapsedEl.hidden  = !collapse;
+      collapsedEl.hidden = !collapse;
 
       if (collapse) {
         const n = removeSets[gi].size;
-        collapsedMsg.textContent = n === files.length
-          ? `All ${n} marked for removal`
-          : `${n} of ${files.length} marked for removal, 1 kept`;
+        collapsedMsg.textContent =
+          n === files.length
+            ? `All ${n} marked for removal`
+            : `${n} of ${files.length} marked for removal, 1 kept`;
       }
 
       updateDoneBtn();
@@ -165,9 +167,9 @@ export function mountReview(root, { onDone }) {
 
   doneBtn.addEventListener('click', () => {
     const snapshots = [];
-    removeSets.forEach(set => {
-      set.forEach(id => {
-        const idx = state.files.findIndex(f => f.id === id);
+    removeSets.forEach((set) => {
+      set.forEach((id) => {
+        const idx = state.files.findIndex((f) => f.id === id);
         if (idx >= 0) snapshots.push({ file: state.files[idx], idx });
       });
     });

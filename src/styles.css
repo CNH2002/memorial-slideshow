@@ -1,19 +1,23 @@
 /* Design tokens */
 :root {
-  --bg:      #0a0a0a;
-  --text:    #f0ede8;
-  --muted:   #6b6560;
-  --accent:  #c9a96e;
-  --radius:  4px;
+  --bg: #0a0a0a;
+  --text: #f0ede8;
+  --muted: #6b6560;
+  --accent: #c9a96e;
+  --radius: 4px;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body, #app {
+html,
+body,
+#app {
   height: 100%;
 }
 
@@ -79,7 +83,9 @@ body {
 /* Loaded-state zones are hidden until photos land */
 .setup-topbar,
 .setup-grid-wrap,
-.setup-bottombar { display: none; }
+.setup-bottombar {
+  display: none;
+}
 
 /* Loaded state — fixed frame, only the grid scrolls */
 #screen-setup.loaded {
@@ -89,7 +95,9 @@ body {
   overflow: hidden;
 }
 
-#screen-setup.loaded .setup-empty-zone { display: none; }
+#screen-setup.loaded .setup-empty-zone {
+  display: none;
+}
 
 #screen-setup.loaded .setup-topbar {
   display: flex;
@@ -181,7 +189,9 @@ body {
 }
 
 @media (hover: hover) {
-  .album-guide { display: none; }
+  .album-guide {
+    display: none;
+  }
 }
 
 /* Folder-pick button — below the empty-state drop zone (desktop only) */
@@ -200,13 +210,20 @@ body {
   transition: color 0.15s;
 }
 
-.folder-btn:hover { color: var(--text); }
-.folder-btn:disabled { opacity: 0.4; cursor: wait; }
+.folder-btn:hover {
+  color: var(--text);
+}
+.folder-btn:disabled {
+  opacity: 0.4;
+  cursor: wait;
+}
 
 /* Hide folder controls on touch devices — webkitdirectory unsupported on iOS */
 @media (hover: none) {
   .folder-btn,
-  .add-folder-btn { display: none !important; }
+  .add-folder-btn {
+    display: none !important;
+  }
 }
 
 /* Add-more button — top bar, loaded state */
@@ -221,7 +238,9 @@ body {
   font-size: 0.8rem;
   letter-spacing: 0.03em;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
 }
 
 .add-more-btn:hover {
@@ -248,7 +267,9 @@ body {
   text-underline-offset: 2px;
   transition: color 0.15s;
 }
-.clear-all-btn:hover { color: #c44; }
+.clear-all-btn:hover {
+  color: #c44;
+}
 
 /* Saved-on-device indicator — bottombar, below the play button */
 .saved-indicator {
@@ -265,7 +286,9 @@ body {
   padding: 3.5rem 2rem;
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.15s, border-style 0.15s;
+  transition:
+    border-color 0.15s,
+    border-style 0.15s;
   user-select: none;
   outline: none;
 }
@@ -398,7 +421,9 @@ body {
   user-select: none;
 }
 
-.media-thumb:active { cursor: grabbing; }
+.media-thumb:active {
+  cursor: grabbing;
+}
 
 .media-thumb img {
   width: 100%;
@@ -435,7 +460,7 @@ body {
   justify-content: center;
   font-size: 1.4rem;
   color: #fff;
-  text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
   pointer-events: none;
 }
 
@@ -458,7 +483,9 @@ body {
   padding: 0;
 }
 
-.media-thumb:hover .thumb-remove { display: flex; }
+.media-thumb:hover .thumb-remove {
+  display: flex;
+}
 
 .thumb-rotate {
   position: absolute;
@@ -479,10 +506,17 @@ body {
   padding: 0;
 }
 
-.media-thumb:hover .thumb-rotate { display: flex; }
+.media-thumb:hover .thumb-rotate {
+  display: flex;
+}
 
-.media-thumb.drag-target  { outline: 2px dashed var(--accent); outline-offset: -2px; }
-.media-thumb.dragging     { opacity: 0.35; }
+.media-thumb.drag-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+.media-thumb.dragging {
+  opacity: 0.35;
+}
 
 /* Removal confirmation — lives in the top bar in loaded state */
 .removed-confirm {
@@ -501,7 +535,9 @@ body {
 
 /* Ensure [hidden] attribute wins over display:flex on these elements */
 .dup-notice[hidden],
-.removed-confirm[hidden] { display: none; }
+.removed-confirm[hidden] {
+  display: none;
+}
 
 .dup-dot {
   flex-shrink: 0;
@@ -513,8 +549,13 @@ body {
 }
 
 @keyframes dupPulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.2; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
 }
 
 /* Checking state: pulsing dot becomes a ring spinner */
@@ -527,10 +568,14 @@ body {
   animation: dupSpin 0.75s linear infinite;
 }
 
-.dup-notice.checking .dup-review-btn { display: none; }
+.dup-notice.checking .dup-review-btn {
+  display: none;
+}
 
 @keyframes dupSpin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .dup-review-btn {
@@ -630,7 +675,10 @@ body {
   padding: 0.5rem 1.5rem;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s,
+    background 0.15s;
   white-space: nowrap;
 }
 
@@ -691,7 +739,9 @@ body {
   cursor: pointer;
   outline: 2px solid transparent;
   outline-offset: -2px;
-  transition: opacity 0.2s, outline-color 0.2s;
+  transition:
+    opacity 0.2s,
+    outline-color 0.2s;
 }
 
 .review-thumb img {
@@ -715,7 +765,9 @@ body {
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.04em;
-  transition: background 0.2s, color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s;
 }
 
 .review-badge.keep {
@@ -775,9 +827,13 @@ body {
   transition: color 0.15s;
 }
 
-.keep-all-btn:hover { color: var(--text); }
+.keep-all-btn:hover {
+  color: var(--text);
+}
 
-.remove-all-btn:hover { color: #c84040; }
+.remove-all-btn:hover {
+  color: #c84040;
+}
 
 /* Collapsed group notice — shown when ≤1 photo remains after marking */
 .review-card-collapsed {
@@ -796,7 +852,9 @@ body {
 /* [hidden] must win over display:grid / display:flex on these elements */
 .review-thumbs[hidden],
 .review-group-actions[hidden],
-.review-card-collapsed[hidden] { display: none; }
+.review-card-collapsed[hidden] {
+  display: none;
+}
 
 /* ── Mobile / touch overrides ────────────────────────── */
 

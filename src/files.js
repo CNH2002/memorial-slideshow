@@ -3,7 +3,7 @@ import { state } from './state.js';
 
 const IMAGE_EXTS = new Set(['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif']);
 const VIDEO_EXTS = new Set(['mp4', 'mov']);
-const HEIC_EXTS  = new Set(['heic', 'heif']);
+const HEIC_EXTS = new Set(['heic', 'heif']);
 
 function fileExt(name) {
   return name.split('.').pop().toLowerCase();
@@ -23,23 +23,26 @@ export function detectType(file) {
 // Needed because createImageBitmap({ imageOrientation:'from-image' }) is ignored in Safari.
 function readExifOrientation(buf) {
   const view = new DataView(buf);
-  if (view.byteLength < 4 || view.getUint16(0) !== 0xFFD8) return 1;
+  if (view.byteLength < 4 || view.getUint16(0) !== 0xffd8) return 1;
   let off = 2;
   while (off + 4 <= view.byteLength) {
-    const marker = view.getUint16(off); off += 2;
+    const marker = view.getUint16(off);
+    off += 2;
     const segLen = view.getUint16(off);
     if (segLen < 2 || off + segLen > view.byteLength) break; // guard malformed segments
-    if (marker === 0xFFE1 && view.getUint32(off + 2) === 0x45786966) { // "Exif"
-      const t  = off + 8; // TIFF header starts after len(2) + "Exif"(4) + null(2)
+    if (marker === 0xffe1 && view.getUint32(off + 2) === 0x45786966) {
+      // "Exif"
+      const t = off + 8; // TIFF header starts after len(2) + "Exif"(4) + null(2)
       if (t + 8 > view.byteLength) break;
-      const le  = view.getUint16(t) === 0x4949;
+      const le = view.getUint16(t) === 0x4949;
       const ifd = t + view.getUint32(t + 4, le);
       if (ifd + 2 > view.byteLength) break;
-      const n   = view.getUint16(ifd, le);
+      const n = view.getUint16(ifd, le);
       const max = Math.min(n, ((view.byteLength - (ifd + 2)) / 12) | 0);
       for (let i = 0; i < max; i++) {
         const e = ifd + 2 + i * 12;
-        if (view.getUint16(e, le) === 0x0112) // Orientation tag
+        if (view.getUint16(e, le) === 0x0112)
+          // Orientation tag
           return view.getUint16(e + 8, le);
       }
       break;
@@ -51,40 +54,62 @@ function readExifOrientation(buf) {
 
 // Bake EXIF orientation into pixels via canvas transform. Works cross-browser (Safari ignores
 // the imageOrientation option on createImageBitmap). Also strips EXIF from the output blob.
-async function orientNormalize(blob) {
-  const buf         = await blob.arrayBuffer();
+async function _orientNormalize(blob) {
+  const buf = await blob.arrayBuffer();
   const orientation = readExifOrientation(buf);
-  const bitmap      = await createImageBitmap(blob); // no imageOrientation — we apply it manually
-  const W = bitmap.width, H = bitmap.height;
+  const bitmap = await createImageBitmap(blob); // no imageOrientation — we apply it manually
+  const W = bitmap.width,
+    H = bitmap.height;
   const swap = orientation >= 5;
   const canvas = document.createElement('canvas');
-  canvas.width  = swap ? H : W;
+  canvas.width = swap ? H : W;
   canvas.height = swap ? W : H;
   const ctx = canvas.getContext('2d');
   try {
     // ctx.transform(a,b,c,d,e,f): x'=a·px+c·py+e  y'=b·px+d·py+f
     switch (orientation) {
-      case 2: ctx.transform(-1,  0,  0,  1,  W, 0); break;
-      case 3: ctx.transform(-1,  0,  0, -1,  W, H); break;
-      case 4: ctx.transform( 1,  0,  0, -1,  0, H); break;
-      case 5: ctx.transform( 0,  1,  1,  0,  0, 0); break;
-      case 6: ctx.transform( 0,  1, -1,  0,  H, 0); break;
-      case 7: ctx.transform( 0, -1, -1,  0,  H, W); break;
-      case 8: ctx.transform( 0, -1,  1,  0,  0, W); break;
-      default: break;
+      case 2:
+        ctx.transform(-1, 0, 0, 1, W, 0);
+        break;
+      case 3:
+        ctx.transform(-1, 0, 0, -1, W, H);
+        break;
+      case 4:
+        ctx.transform(1, 0, 0, -1, 0, H);
+        break;
+      case 5:
+        ctx.transform(0, 1, 1, 0, 0, 0);
+        break;
+      case 6:
+        ctx.transform(0, 1, -1, 0, H, 0);
+        break;
+      case 7:
+        ctx.transform(0, -1, -1, 0, H, W);
+        break;
+      case 8:
+        ctx.transform(0, -1, 1, 0, 0, W);
+        break;
+      default:
+        break;
     }
     ctx.drawImage(bitmap, 0, 0);
   } finally {
     bitmap.close();
   }
   return new Promise((resolve, reject) =>
-    canvas.toBlob(b => b ? resolve(b) : reject(new Error('canvas.toBlob failed')), 'image/jpeg', 0.92)
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error('canvas.toBlob failed'))),
+      'image/jpeg',
+      0.92
+    )
   );
 }
 
 function bufHash(buf) {
-  return crypto.subtle.digest('SHA-256', buf).then(
-    d => Array.from(new Uint8Array(d)).map(b => b.toString(16).padStart(2, '0')).join('')
+  return crypto.subtle.digest('SHA-256', buf).then((d) =>
+    Array.from(new Uint8Array(d))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
   );
 }
 
@@ -95,7 +120,7 @@ export async function collectFromEntry(entry) {
   }
   if (entry.isDirectory) {
     const reader = entry.createReader();
-    const files  = [];
+    const files = [];
     let batch;
     do {
       batch = await new Promise((res, rej) => reader.readEntries(res, rej));
@@ -108,17 +133,20 @@ export async function collectFromEntry(entry) {
 }
 
 export async function processFiles(rawFiles, onProgress) {
-  const total      = rawFiles.length;
-  let   completed  = 0;
+  const total = rawFiles.length;
+  let completed = 0;
   // Shared across workers — safe because JS is single-threaded: the sync
   // has()/add() pair between awaits cannot interleave with another worker.
-  const seenHashes = new Set(state.files.map(f => f.contentHash).filter(Boolean));
-  const results    = new Array(total).fill(null); // preserves drop order
+  const seenHashes = new Set(state.files.map((f) => f.contentHash).filter(Boolean));
+  const results = new Array(total).fill(null); // preserves drop order
 
   async function processOne(i) {
     const file = rawFiles[i];
     const mediaType = detectType(file);
-    if (!mediaType) { onProgress?.(++completed, total); return; }
+    if (!mediaType) {
+      onProgress?.(++completed, total);
+      return;
+    }
 
     if (mediaType === 'video') {
       // Videos can be gigabytes — never buffer the whole file.
@@ -132,8 +160,13 @@ export async function processFiles(rawFiles, onProgress) {
       }
       seenHashes.add(hash);
       results[i] = {
-        id: crypto.randomUUID(), name: file.name, type: 'video',
-        blob: file, url: URL.createObjectURL(file), rotation: 0, contentHash: hash,
+        id: crypto.randomUUID(),
+        name: file.name,
+        type: 'video',
+        blob: file,
+        url: URL.createObjectURL(file),
+        rotation: 0,
+        contentHash: hash,
       };
       onProgress?.(++completed, total);
       return;
@@ -142,8 +175,12 @@ export async function processFiles(rawFiles, onProgress) {
     // Photos: read into memory immediately — iOS Safari File objects can expire after
     // async gaps, and we need the buffer for HEIC conversion anyway.
     let buf;
-    try { buf = await file.arrayBuffer(); }
-    catch { onProgress?.(++completed, total); return; }
+    try {
+      buf = await file.arrayBuffer();
+    } catch {
+      onProgress?.(++completed, total);
+      return;
+    }
 
     const hash = await bufHash(buf);
     if (seenHashes.has(hash)) {
@@ -160,8 +197,13 @@ export async function processFiles(rawFiles, onProgress) {
         blob = Array.isArray(r) ? r[0] : r;
       }
       results[i] = {
-        id: crypto.randomUUID(), name: file.name, type: 'photo',
-        blob, url: URL.createObjectURL(blob), rotation: 0, contentHash: hash,
+        id: crypto.randomUUID(),
+        name: file.name,
+        type: 'photo',
+        blob,
+        url: URL.createObjectURL(blob),
+        rotation: 0,
+        contentHash: hash,
       };
     } catch (err) {
       console.warn(`[import] skipped ${file.name}:`, err);
@@ -171,9 +213,11 @@ export async function processFiles(rawFiles, onProgress) {
 
   // 4 concurrent workers drain a shared index counter
   let idx = 0;
-  await Promise.all(Array.from({ length: 4 }, async () => {
-    while (idx < total) await processOne(idx++);
-  }));
+  await Promise.all(
+    Array.from({ length: 4 }, async () => {
+      while (idx < total) await processOne(idx++);
+    })
+  );
 
   return results.filter(Boolean);
 }

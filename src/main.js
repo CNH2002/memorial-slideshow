@@ -11,14 +11,14 @@ const app = document.getElementById('app');
 // from the iOS Photos app directly into the slideshow).
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
-  navigator.serviceWorker.addEventListener('message', event => {
+  navigator.serviceWorker.addEventListener('message', (event) => {
     if (event.data?.type === 'SHARED_FILES' && event.data.files?.length) {
       window.dispatchEvent(new CustomEvent('slideshow:shared-files', { detail: event.data.files }));
     }
   });
   if (location.search.includes('share-target')) {
     history.replaceState({}, '', '/');
-    navigator.serviceWorker.ready.then(r => r.active?.postMessage({ type: 'GET_SHARED_FILES' }));
+    navigator.serviceWorker.ready.then((r) => r.active?.postMessage({ type: 'GET_SHARED_FILES' }));
   }
 }
 
@@ -33,13 +33,19 @@ function showReview() {
       // review.js already called removeFile() for each; sync those deletes to IDB
       // before mounting setup so the restored grid and the DB stay in lockstep.
       if (removed > 0) {
-        dbRemove(snapshots.map(s => s.file.id), state.files.map(f => f.id));
+        dbRemove(
+          snapshots.map((s) => s.file.id),
+          state.files.map((f) => f.id)
+        );
       }
       showSetup();
       if (removed > 0) {
         showUndoToast(`${removed} removed`, () => {
           restoreFiles(snapshots);
-          dbAdd(snapshots.map(s => s.file), state.files.map(f => f.id));
+          dbAdd(
+            snapshots.map((s) => s.file),
+            state.files.map((f) => f.id)
+          );
           showSetup();
         });
       }
@@ -56,6 +62,8 @@ function showPlayer() {
 // immediately on load. If IDB is unavailable or empty, fall through to the
 // empty state — the app always works without persistence.
 dbLoad()
-  .then(saved => { if (saved.length) addFiles(saved); })
+  .then((saved) => {
+    if (saved.length) addFiles(saved);
+  })
   .catch(() => {})
   .finally(showSetup);

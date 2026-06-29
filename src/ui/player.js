@@ -13,18 +13,22 @@ export function mountPlayer(root, { onExit }) {
     </div>
   `;
 
-  const screenEl   = root.querySelector('#screen-player');
-  const stage      = root.querySelector('#media-stage');
+  const screenEl = root.querySelector('#screen-player');
+  const stage = root.querySelector('#media-stage');
   const controlsEl = root.querySelector('#player-controls');
-  const show       = createSlideshow(stage, state.files, state.settings);
-  let exited       = false;
-  let wakeLock     = null;
+  const show = createSlideshow(stage, state.files, state.settings);
+  let exited = false;
+  let wakeLock = null;
   let controlsTimer = null;
 
   // ── Wake Lock — keep screen on during slideshow ──────────
   async function acquireWakeLock() {
     if (!('wakeLock' in navigator)) return;
-    try { wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+    } catch {
+      // wake lock unavailable — fine, slideshow continues without it
+    }
   }
   // Re-acquire after the tab returns to foreground (iOS releases it on hide)
   document.addEventListener('visibilitychange', () => {
@@ -39,23 +43,30 @@ export function mountPlayer(root, { onExit }) {
     clearTimeout(controlsTimer);
     show.stop();
     document.removeEventListener('keydown', handleKey);
-    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+    if (wakeLock) {
+      wakeLock.release().catch(() => {});
+      wakeLock = null;
+    }
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     onExit();
   }
 
   // ── Keyboard (desktop) ───────────────────────────────────
   function handleKey(e) {
-    if      (e.key === 'Escape')     exit();
+    if (e.key === 'Escape') exit();
     else if (e.key === 'ArrowRight') show.next();
-    else if (e.key === 'ArrowLeft')  show.prev();
+    else if (e.key === 'ArrowLeft') show.prev();
   }
   document.addEventListener('keydown', handleKey);
 
   // Exit if browser dismisses fullscreen via its own UI
-  document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement) exit();
-  }, { once: true });
+  document.addEventListener(
+    'fullscreenchange',
+    () => {
+      if (!document.fullscreenElement) exit();
+    },
+    { once: true }
+  );
 
   // ── Touch controls (mobile) ──────────────────────────────
   function showControls() {
@@ -69,14 +80,20 @@ export function mountPlayer(root, { onExit }) {
     controlsEl.setAttribute('aria-hidden', 'true');
   }
 
-  screenEl.addEventListener('click', e => {
+  screenEl.addEventListener('click', (e) => {
     if (e.target.closest('#player-controls')) return;
     controlsEl.classList.contains('visible') ? hideControls() : showControls();
   });
 
   root.querySelector('#player-exit').addEventListener('click', exit);
-  root.querySelector('#player-next').addEventListener('click', () => { show.next(); showControls(); });
-  root.querySelector('#player-prev').addEventListener('click', () => { show.prev(); showControls(); });
+  root.querySelector('#player-next').addEventListener('click', () => {
+    show.next();
+    showControls();
+  });
+  root.querySelector('#player-prev').addEventListener('click', () => {
+    show.prev();
+    showControls();
+  });
 
   // ── Start ────────────────────────────────────────────────
   // requestFullscreen is unsupported in iOS Safari browser tabs — guard it so

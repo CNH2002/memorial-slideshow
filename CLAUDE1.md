@@ -27,12 +27,21 @@ duplicate photos → press play → it loops cleanly forever, untouched.
 Vite · vanilla JS (no framework) · `vite-plugin-singlefile` (one HTML out) ·
 `heic2any` (HEIC → displayable). No backend, database, or accounts.
 
+## Commit Rules & Automation
+
+- A pre-commit hook using `lint-staged` is active.
+- Never manually run global formatting or linting commands before a commit.
+- Simply execute the git commit. The hook automatically cleans and formats only modified files.
+
 ## Commands
 
 - `npm install` — dependencies
 - `npm run dev` — dev server, live reload
 - `npm run build` — single-file `.html` in `dist/`
 - `npm run preview` — serve the built file
+- `npm run lint` — check for issues without changing anything
+- `npm run lint:fix` — auto-fix ESLint issues
+- `npm run format` — reformat all files with Prettier
 
 ## Layout
 
@@ -72,11 +81,13 @@ next. Keep "how-to" detail in `PRD.md`, not here. Add a one-line checkpoint
 below as each phase lands.
 
 ## Checkpoints
+
 - Phase 0–1 done: Vite + vite-plugin-singlefile + heic2any installed; full src/ structure; three navigable skeleton screens; dev server confirmed at localhost:5173.
 
 ## Workflow
 
 When given a task:
+
 - Create a minimal plan if needed
 - Break into small steps when complexity requires it
 - Execute incrementally using todo.md if helpful

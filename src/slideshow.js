@@ -3,7 +3,7 @@ function applyVideoRotation(el, deg) {
   if (deg === 90 || deg === 270) {
     const scale = Math.min(
       window.innerHeight / window.innerWidth,
-      window.innerWidth  / window.innerHeight
+      window.innerWidth / window.innerHeight
     );
     el.style.transform = `rotate(${deg}deg) scale(${scale})`;
   } else {
@@ -13,15 +13,21 @@ function applyVideoRotation(el, deg) {
 
 export function createSlideshow(container, files, settings) {
   let currentIdx = 0;
-  let timerId    = null;
+  let timerId = null;
   let generation = 0;
 
   function clearCurrent() {
     generation++;
-    if (timerId !== null) { clearTimeout(timerId); timerId = null; }
+    if (timerId !== null) {
+      clearTimeout(timerId);
+      timerId = null;
+    }
     const el = container.firstChild;
     if (el) {
-      if (el.tagName === 'VIDEO') { el.pause(); el.src = ''; }
+      if (el.tagName === 'VIDEO') {
+        el.pause();
+        el.src = '';
+      }
       container.removeChild(el);
     }
   }
@@ -30,7 +36,7 @@ export function createSlideshow(container, files, settings) {
     clearCurrent();
     if (!files.length) return;
     const file = files[idx];
-    const gen  = generation;
+    const gen = generation;
 
     if (file.type === 'photo') {
       const img = document.createElement('img');
@@ -45,9 +51,9 @@ export function createSlideshow(container, files, settings) {
       }, settings.photoDuration * 1000);
     } else {
       const video = document.createElement('video');
-      video.src         = file.url;
-      video.muted       = true;
-      video.autoplay    = true;
+      video.src = file.url;
+      video.muted = true;
+      video.autoplay = true;
       video.playsInline = true;
       if (file.rotation) applyVideoRotation(video, file.rotation);
       const advance = () => {
@@ -62,9 +68,20 @@ export function createSlideshow(container, files, settings) {
   }
 
   return {
-    start() { currentIdx = 0; showItem(0); },
-    stop()  { clearCurrent(); },
-    next()  { currentIdx = (currentIdx + 1) % files.length; showItem(currentIdx); },
-    prev()  { currentIdx = (currentIdx - 1 + files.length) % files.length; showItem(currentIdx); },
+    start() {
+      currentIdx = 0;
+      showItem(0);
+    },
+    stop() {
+      clearCurrent();
+    },
+    next() {
+      currentIdx = (currentIdx + 1) % files.length;
+      showItem(currentIdx);
+    },
+    prev() {
+      currentIdx = (currentIdx - 1 + files.length) % files.length;
+      showItem(currentIdx);
+    },
   };
 }

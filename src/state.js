@@ -1,5 +1,5 @@
 export const state = {
-  files: [],       // { id, name, type:'photo'|'video', blob, url }
+  files: [], // { id, name, type:'photo'|'video', blob, url }
   dupGroups: [],
   settings: { photoDuration: 7 },
 };
@@ -9,13 +9,13 @@ export function addFiles(records) {
 }
 
 export function clearFiles() {
-  state.files.forEach(f => URL.revokeObjectURL(f.url));
+  state.files.forEach((f) => URL.revokeObjectURL(f.url));
   state.files = [];
   state.dupGroups = [];
 }
 
 export function removeFile(id) {
-  const idx = state.files.findIndex(f => f.id === id);
+  const idx = state.files.findIndex((f) => f.id === id);
   if (idx === -1) return;
   URL.revokeObjectURL(state.files[idx].url);
   state.files.splice(idx, 1);
@@ -42,7 +42,7 @@ export function reorderFile(fromIdx, toIdx) {
 async function bakeRotation(blob) {
   const bmp = await createImageBitmap(blob);
   const canvas = document.createElement('canvas');
-  canvas.width  = bmp.height;
+  canvas.width = bmp.height;
   canvas.height = bmp.width;
   const ctx = canvas.getContext('2d');
   ctx.translate(canvas.width / 2, canvas.height / 2);
@@ -50,18 +50,22 @@ async function bakeRotation(blob) {
   ctx.drawImage(bmp, -bmp.width / 2, -bmp.height / 2);
   bmp.close();
   return new Promise((res, rej) =>
-    canvas.toBlob(b => b ? res(b) : rej(new Error('bakeRotation: toBlob returned null')), 'image/jpeg', 0.92)
+    canvas.toBlob(
+      (b) => (b ? res(b) : rej(new Error('bakeRotation: toBlob returned null'))),
+      'image/jpeg',
+      0.92
+    )
   );
 }
 
 export async function rotateFile(id) {
-  const file = state.files.find(f => f.id === id);
+  const file = state.files.find((f) => f.id === id);
   if (!file) return;
   if (file.type === 'photo') {
     const newBlob = await bakeRotation(file.blob);
     URL.revokeObjectURL(file.url);
     file.blob = newBlob;
-    file.url  = URL.createObjectURL(newBlob);
+    file.url = URL.createObjectURL(newBlob);
     // rotation stays 0 — baked into the blob
   } else {
     file.rotation = (file.rotation + 90) % 360;
