@@ -34,12 +34,12 @@ the device — nothing is ever uploaded.
 
 ## 4. Stack
 
-| Choice | Plain terms | Why |
-|---|---|---|
-| **Vite** | Live-preview workshop + final packer | Fast dev loop; clean static build |
-| **Vanilla JS** | Plain browser code, no framework | App is small and visual; a framework adds weight, no payoff |
-| **vite-plugin-singlefile** | Inlines all JS/CSS into one HTML | Keeps the "just open it offline" property |
-| **heic2any** | Converts iPhone HEIC so any browser shows it | Chrome can't render HEIC natively |
+| Choice                     | Plain terms                                  | Why                                                         |
+| -------------------------- | -------------------------------------------- | ----------------------------------------------------------- |
+| **Vite**                   | Live-preview workshop + final packer         | Fast dev loop; clean static build                           |
+| **Vanilla JS**             | Plain browser code, no framework             | App is small and visual; a framework adds weight, no payoff |
+| **vite-plugin-singlefile** | Inlines all JS/CSS into one HTML             | Keeps the "just open it offline" property                   |
+| **heic2any**               | Converts iPhone HEIC so any browser shows it | Chrome can't render HEIC natively                           |
 
 No backend, database, or accounts.
 
@@ -71,6 +71,7 @@ module single-purpose.
 ## 6. Features
 
 ### F1 — Import
+
 - Drag-and-drop onto a drop zone, click-to-browse, and dropped folders.
 - Images: JPG, JPEG, PNG, WebP, HEIC, HEIF. Video: MP4, MOV.
 - Detect type by MIME, fall back to extension (HEIC/MOV often have empty MIME on
@@ -81,21 +82,23 @@ module single-purpose.
 - Create object URLs for preview; revoke on clear to avoid memory leaks.
 
 ### F2 — Automatic orientation (the "right way round" feature)
+
 - Photos must display upright even when imported sideways.
 - On import, normalize every image: read its embedded orientation and bake the
   correct rotation into the working copy used for both display and hashing.
 - Implementation: `createImageBitmap(blob, { imageOrientation: 'from-image' })`
   → draw to canvas → re-encode to a normalized blob. This applies the photo's
-  orientation data with no extra library. Run it *after* any HEIC conversion,
+  orientation data with no extra library. Run it _after_ any HEIC conversion,
   since conversion can drop orientation metadata.
 - **Manual catch-all:** in the review screen, each photo has a one-tap rotate
   (90° steps) for the rare image whose metadata is missing or wrong. The
   rotation persists into the show.
 - Note: full content-based "which way is up" detection needs an ML model and is
   too heavy for an offline single-file build — out of scope. Embedded-orientation
-  + manual rotate covers the realistic phone-photo case.
+  - manual rotate covers the realistic phone-photo case.
 
 ### F3 — Duplicate detection (visual)
+
 - Goal: catch the same photo uploaded by two family members — same image,
   different filename.
 - Compute a perceptual hash per image (dHash: downscale to 9×8 grayscale,
@@ -107,6 +110,7 @@ module single-purpose.
   exist, surface a calm notice with a "Review" action.
 
 ### F4 — Duplicate review
+
 - Its own clean full screen.
 - One card per group; similar photos shown side by side.
 - Tap a photo to toggle keep/remove (selected = highlighted, unselected =
@@ -116,12 +120,14 @@ module single-purpose.
   returns to setup, confirms how many were removed.
 
 ### F5 — Playback
+
 - **Hard cut** between items — no fade, no motion, no black frame.
 - Photos: hold for a user-set time (default **7s**, range 1–15s, set on setup).
 - Videos: play **full length, muted**, then auto-advance.
 - **Loop forever in order.** No end screen, no auto-pause. Runs until Esc.
 
 ### F6 — Presented view (controls)
+
 - During the show the screen shows **only the media** on pure black. No control
   bar, no progress bar, no counter, no hover chrome — nothing but the image.
 - `object-fit: contain` — whole frame always visible, never cropped; letterbox
@@ -169,10 +175,12 @@ it. Every design decision serves that moment.
 ## 8. Build workflow
 
 One-time setup (operator runs manually before first session):
+
 ```
 mkdir memorial-slideshow && cd memorial-slideshow
 git init && npm init -y
 ```
+
 Drop `PRD.md` and `CLAUDE.md` in the root. Then build in phases — verify each in
 the browser and commit before moving on:
 
