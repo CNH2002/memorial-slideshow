@@ -69,6 +69,7 @@ export async function dbLoad() {
       url: URL.createObjectURL(r.blob),
       rotation: r.rotation ?? 0,
       contentHash: r.contentHash,
+      lowRes: r.lowRes ?? false,
     }));
   } catch (err) {
     console.warn('[db] load failed:', err);
@@ -91,6 +92,7 @@ export async function dbAdd(files, orderIds) {
           blob: f.blob,
           rotation: f.rotation ?? 0,
           contentHash: f.contentHash,
+          lowRes: f.lowRes ?? false,
         },
       })),
       { type: 'put', record: { id: ORDER_KEY, ids: orderIds } },

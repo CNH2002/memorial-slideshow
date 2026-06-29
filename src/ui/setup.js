@@ -215,7 +215,10 @@ export function mountSetup(root, { onPlay, onReview }) {
     dupNotice.classList.add('checking');
     dupMsg.textContent = 'Checking for similar photos…';
     const gen = ++detectionGen;
-    detectDuplicates(state.files)
+    detectDuplicates(state.files, (done, total) => {
+      if (gen !== detectionGen) return;
+      dupMsg.textContent = `Checking for similar photos… ${done} / ${total}`;
+    })
       .then((groups) => {
         if (gen !== detectionGen) return;
         state.dupGroups = groups;
@@ -467,14 +470,17 @@ export function mountSetup(root, { onPlay, onReview }) {
     refresh();
 
     // Show checking indicator immediately so there's no silent gap before detection starts
-    if (state.files.filter((f) => f.type === 'photo').length >= 2) {
+    const photoCount = state.files.filter((f) => f.type === 'photo').length;
+    if (photoCount >= 2) {
       dupNotice.hidden = false;
       dupNotice.classList.add('checking');
-      dupMsg.textContent = 'Checking for similar photos…';
+      dupMsg.textContent = 'Scanning for duplicates…';
     }
 
     // Auto-remove near-exact duplicates silently (no user input needed)
-    const exactGroups = await detectExactGroups(state.files);
+    const exactGroups = await detectExactGroups(state.files, (done, total) => {
+      if (photoCount >= 2) dupMsg.textContent = `Scanning for duplicates… ${done} / ${total}`;
+    });
     let autoRemoved = 0;
     for (const group of exactGroups) {
       const best = group.reduce((a, b) => (a.blob.size > b.blob.size ? a : b));

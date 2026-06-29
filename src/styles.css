@@ -979,3 +979,55 @@ body {
   justify-content: center;
   -webkit-tap-highlight-color: transparent;
 }
+
+#player-safe-zone {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+#player-safe-zone.active {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+/* 4:3 projector safe-zone overlay — visible only when controls are shown and guide is toggled on */
+#safe-zone-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  display: none;
+}
+
+#safe-zone-overlay.active {
+  display: block;
+}
+
+.safe-zone-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  aspect-ratio: 4 / 3;
+  /* Fit the largest 4:3 box that fills the screen without overflowing */
+  height: min(100vh, calc(100vw * 3 / 4));
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  /* Vignette: fills everything outside this box with a semi-opaque mask */
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.38);
+}
+
+.safe-zone-label {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-family: system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  text-transform: uppercase;
+  pointer-events: none;
+}
