@@ -1,3 +1,10 @@
+import '@fontsource/cormorant-garamond/latin-300.css';
+import '@fontsource/cormorant-garamond/latin-400.css';
+import '@fontsource/cormorant-garamond/latin-600.css';
+import '@fontsource/dm-sans/latin-400.css';
+import '@fontsource/dm-sans/latin-500.css';
+
+import { mountLanding } from './ui/landing.js';
 import { mountSetup } from './ui/setup.js';
 import { mountReview } from './ui/review.js';
 import { mountPlayer } from './ui/player.js';
@@ -58,12 +65,15 @@ function showPlayer() {
   mountPlayer(app, { onExit: showSetup });
 }
 
-// Restore persisted photos before the first render so the grid is populated
-// immediately on load. If IDB is unavailable or empty, fall through to the
-// empty state — the app always works without persistence.
+function showLanding() {
+  mountLanding(app, { onEnter: showSetup });
+}
+
+// Load persisted photos before first render — landing displays while DB reads,
+// so photos are ready in state by the time the user clicks Begin.
 dbLoad()
   .then((saved) => {
     if (saved.length) addFiles(saved);
   })
   .catch(() => {})
-  .finally(showSetup);
+  .finally(showLanding);

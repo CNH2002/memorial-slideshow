@@ -37,16 +37,17 @@ export function reorderFile(fromIdx, toIdx) {
   state.files.splice(toIdx, 0, item);
 }
 
-// Rotate 90° clockwise. Photos: bake into blob (blob becomes ground truth).
-// Videos: track angle in state only; player applies CSS transform.
-async function bakeRotation(blob) {
+// Bake a rotation (90/180/270°) into a blob via canvas. Exported so callers can
+// persist the result to IDB without blocking the UI rotation response.
+export async function bakeRotation(blob, deg = 90) {
   const bmp = await createImageBitmap(blob);
+  const swap = deg === 90 || deg === 270;
   const canvas = document.createElement('canvas');
-  canvas.width = bmp.height;
-  canvas.height = bmp.width;
+  canvas.width = swap ? bmp.height : bmp.width;
+  canvas.height = swap ? bmp.width : bmp.height;
   const ctx = canvas.getContext('2d');
   ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate(Math.PI / 2);
+  ctx.rotate((deg * Math.PI) / 180);
   ctx.drawImage(bmp, -bmp.width / 2, -bmp.height / 2);
   bmp.close();
   return new Promise((res, rej) =>
@@ -58,16 +59,8 @@ async function bakeRotation(blob) {
   );
 }
 
-export async function rotateFile(id) {
+export function rotateFile(id) {
   const file = state.files.find((f) => f.id === id);
   if (!file) return;
-  if (file.type === 'photo') {
-    const newBlob = await bakeRotation(file.blob);
-    URL.revokeObjectURL(file.url);
-    file.blob = newBlob;
-    file.url = URL.createObjectURL(newBlob);
-    // rotation stays 0 — baked into the blob
-  } else {
-    file.rotation = (file.rotation + 90) % 360;
-  }
+  file.rotation = ((file.rotation ?? 0) + 90) % 360;
 }

@@ -18,20 +18,29 @@
   "description": "",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.2",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.7.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
     "prettier": "^3.9.3",
+    "tailwindcss": "^4.3.2",
     "vite": "^8.1.0",
     "vite-plugin-singlefile": "^2.3.3"
   },
   "dependencies": {
+    "@fontsource/cormorant-garamond": "^5.2.11",
+    "@fontsource/dm-sans": "^5.2.8",
     "heic2any": "^0.0.4"
   },
   "lint-staged": {
-    "*.js": ["prettier --write", "eslint --fix"],
-    "*.{html,css,md}": ["prettier --write"]
+    "*.js": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{html,css,md}": [
+      "prettier --write"
+    ]
   }
 }

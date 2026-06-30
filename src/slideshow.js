@@ -55,6 +55,7 @@ export function createSlideshow(container, files, settings) {
     if (file.type === 'photo') {
       el = document.createElement('img');
       el.alt = file.name;
+      if (file.rotation) applyVideoRotation(el, file.rotation);
     } else {
       el = document.createElement('video');
       el.muted = true;
@@ -62,7 +63,6 @@ export function createSlideshow(container, files, settings) {
       el.preload = 'auto';
       if (file.rotation) applyVideoRotation(el, file.rotation);
     }
-    // Hidden until activated; z-index keeps it behind the current visible element
     el.style.visibility = 'hidden';
     el.style.zIndex = '0';
     return el;
@@ -71,7 +71,7 @@ export function createSlideshow(container, files, settings) {
   // Kick off a background preload for `idx` so it's ready before it's needed
   function startPreload(idx) {
     if (stopped || files.length <= 1) return;
-    if (pendingFileIdx === idx) return; // already preloading the right item
+    if (pendingFileIdx === idx) return;
     removePending();
     const file = files[idx];
     const el = makeEl(file);
@@ -86,19 +86,8 @@ export function createSlideshow(container, files, settings) {
     }
   }
 
-  // Make `el` the visible slide, schedule its advance, and preload the next item
-  function activate(el, file, myGen) {
-    if (stopped || gen !== myGen) return;
-
-    // Reveal new element BEFORE removing the old one — zero black frame
-    el.style.visibility = 'visible';
-    el.style.zIndex = '1';
-    removeCurrent();
-    currentEl = el;
-    // el was pending; it's now current
-    pendingEl = null;
-    pendingFileIdx = -1;
-
+  // Schedule the advance to the next slide once the current one is "done"
+  function scheduleAdvance(el, file, myGen) {
     if (file.type === 'photo') {
       timerId = setTimeout(() => {
         if (gen !== myGen) return;
@@ -116,7 +105,18 @@ export function createSlideshow(container, files, settings) {
       el.addEventListener('ended', onEnd, { once: true });
       el.addEventListener('error', onEnd, { once: true });
     }
+  }
 
+  // Make `el` the visible slide, schedule its advance, and preload the next item
+  function activate(el, file, myGen) {
+    if (stopped || gen !== myGen) return;
+    el.style.visibility = 'visible';
+    el.style.zIndex = '1';
+    removeCurrent();
+    currentEl = el;
+    pendingEl = null;
+    pendingFileIdx = -1;
+    scheduleAdvance(el, file, myGen);
     startPreload((currentIdx + 1) % files.length);
   }
 
@@ -148,7 +148,7 @@ export function createSlideshow(container, files, settings) {
       return;
     }
 
-    // Slow path: create element fresh (preload wasn't ready or was for a different item)
+    // Slow path: create element fresh
     removePending();
     const el = makeEl(file);
     container.appendChild(el);
