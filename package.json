@@ -32,6 +32,7 @@
   "dependencies": {
     "@fontsource/cormorant-garamond": "^5.2.11",
     "@fontsource/dm-sans": "^5.2.8",
+    "@vercel/analytics": "^2.0.1",
     "heic2any": "^0.0.4"
   },
   "lint-staged": {

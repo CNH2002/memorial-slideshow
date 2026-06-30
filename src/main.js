@@ -1,3 +1,6 @@
+import { inject } from '@vercel/analytics';
+inject();
+
 import '@fontsource/cormorant-garamond/latin-300.css';
 import '@fontsource/cormorant-garamond/latin-400.css';
 import '@fontsource/cormorant-garamond/latin-600.css';
