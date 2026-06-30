@@ -11,6 +11,9 @@ import { mountLanding } from './ui/landing.js';
 import { mountSetup } from './ui/setup.js';
 import { mountReview } from './ui/review.js';
 import { mountPlayer } from './ui/player.js';
+import { mountPrivacy } from './ui/privacy.js';
+import { mountTerms } from './ui/terms.js';
+import { mountCookieBanner } from './ui/cookie.js';
 import { showUndoToast, dismissToast } from './ui/toast.js';
 import { state, addFiles, restoreFiles } from './state.js';
 import { dbLoad, dbAdd, dbRemove } from './db.js';
@@ -68,9 +71,21 @@ function showPlayer() {
   mountPlayer(app, { onExit: showSetup });
 }
 
-function showLanding() {
-  mountLanding(app, { onEnter: showSetup });
+function showPrivacy() {
+  mountPrivacy(app, { onBack: showLanding });
 }
+
+function showTerms() {
+  mountTerms(app, { onBack: showLanding });
+}
+
+function showLanding() {
+  mountLanding(app, { onEnter: showSetup, onPrivacy: showPrivacy, onTerms: showTerms });
+}
+
+// Cookie consent banner — attaches to document.body, persists across screens
+mountCookieBanner();
+window.addEventListener('slideshow:show-privacy', showPrivacy);
 
 // Load persisted photos before first render — landing displays while DB reads,
 // so photos are ready in state by the time the user clicks Begin.

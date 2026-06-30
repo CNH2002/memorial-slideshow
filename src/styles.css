@@ -284,14 +284,23 @@ input[type='range'] {
 .land-panel {
   position: absolute;
   inset: 0;
+  z-index: 0;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.45s ease;
   overflow: hidden;
 }
 .land-panel--active {
+  z-index: 1;
   opacity: 1;
   pointer-events: auto;
+}
+
+.land-panel-text {
+  position: absolute;
+  bottom: 2rem;
+  left: 2rem;
+  right: 2rem;
 }
 
 .land-tab {
@@ -351,4 +360,20 @@ input[type='range'] {
     opacity: 1 !important;
     color: rgba(107, 101, 96, 0.6);
   }
+}
+
+.land-footer-link {
+  font-size: 0.75rem;
+  color: rgba(107, 101, 96, 0.6);
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 200ms ease;
+}
+.land-footer-link:hover {
+  color: rgba(244, 242, 237, 0.7);
+}
+
+/* Push landing scroll content above fixed cookie banner when visible */
+body.has-cookie-banner #landing {
+  padding-bottom: 64px;
 }
