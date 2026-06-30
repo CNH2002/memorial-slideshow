@@ -218,3 +218,137 @@ input[type='range'] {
 .review-card-collapsed[hidden] {
   display: none !important;
 }
+
+/* ── Landing page ─────────────────────────────────────────── */
+#landing {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+#land-nav {
+  transition: box-shadow 200ms ease;
+}
+.land-nav--scrolled {
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.05),
+    0 6px 24px 0 rgba(0, 0, 0, 0.5);
+}
+
+.land-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.65s ease,
+    transform 0.65s ease;
+}
+.land-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+.land-reveal-d1 {
+  transition-delay: 0.1s;
+}
+.land-reveal-d2 {
+  transition-delay: 0.2s;
+}
+.land-reveal-d3 {
+  transition-delay: 0.3s;
+}
+
+@keyframes landScrollPulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translateY(5px);
+  }
+}
+.land-scroll-hint {
+  animation: landScrollPulse 2.8s ease-in-out infinite;
+}
+
+.land-demo-stage {
+  min-height: 360px;
+}
+@media (min-width: 768px) {
+  .land-demo-stage {
+    min-height: 440px;
+  }
+}
+
+.land-panel {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+  overflow: hidden;
+}
+.land-panel--active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.land-tab {
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition:
+    color 200ms ease,
+    border-color 200ms ease;
+}
+.land-tab--active {
+  color: #f4f2ed;
+  border-bottom-color: #768479;
+}
+
+@keyframes landDrift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  40% {
+    transform: translate(-10px, 14px) scale(1.028);
+  }
+  70% {
+    transform: translate(8px, -10px) scale(0.978);
+  }
+}
+.land-panel-bg--animated {
+  animation: landDrift 14s ease-in-out infinite;
+  will-change: transform;
+}
+
+.land-panel-bg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.land-tiles-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.land-tiles-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.land-article-card {
+  transition:
+    background 250ms ease,
+    border-color 250ms ease;
+}
+.land-article-card:hover {
+  background: rgba(30, 33, 35, 0.7);
+  border-color: rgba(118, 132, 121, 0.25);
+}
+@media (hover: none) {
+  .land-article-card .land-article-arrow {
+    opacity: 1 !important;
+    color: rgba(107, 101, 96, 0.6);
+  }
+}
