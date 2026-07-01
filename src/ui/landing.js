@@ -210,18 +210,9 @@ export function mountLanding(container, { onEnter, onPrivacy, onTerms }) {
               </div>
             </div>
           </div>
-
-          <div class="land-reveal flex flex-wrap gap-3 mt-6">
-            <span class="font-body text-[10px] uppercase tracking-[0.2em] text-muted/50
-                         border border-white/[0.06] rounded px-3 py-1.5">No internet required</span>
-            <span class="font-body text-[10px] uppercase tracking-[0.2em] text-muted/50
-                         border border-white/[0.06] rounded px-3 py-1.5">Photos stay local</span>
-            <span class="font-body text-[10px] uppercase tracking-[0.2em] text-muted/50
-                         border border-white/[0.06] rounded px-3 py-1.5">Any projector</span>
-            <span class="font-body text-[10px] uppercase tracking-[0.2em] text-muted/50
-                         border border-white/[0.06] rounded px-3 py-1.5">Zero flash</span>
-          </div>
-        </div>
+        <p class="land-reveal font-body text-sm text-muted/60 mt-6">
+          Runs entirely offline. Your photos stay on your device and play on any projector — no uploads, no accounts.
+        </p>
       </section>
 
       <!-- Editorial Articles -->
