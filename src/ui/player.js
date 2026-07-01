@@ -90,6 +90,17 @@ export function mountPlayer(root, { onExit }) {
   });
   acquireWakeLock();
 
+  // ── Keyboard ──────────────────────────────────────────────
+  function handleKey(e) {
+    if (e.key === 'Escape') exit();
+    else if (e.key === 'ArrowRight') show.next();
+    else if (e.key === 'ArrowLeft') show.prev();
+  }
+
+  function handleFullscreenChange() {
+    if (!document.fullscreenElement) exit();
+  }
+
   // ── Exit ──────────────────────────────────────────────────
   function exit() {
     if (exited) return;
@@ -97,6 +108,7 @@ export function mountPlayer(root, { onExit }) {
     clearTimeout(controlsTimer);
     show.stop();
     document.removeEventListener('keydown', handleKey);
+    document.removeEventListener('fullscreenchange', handleFullscreenChange);
     if (wakeLock) {
       wakeLock.release().catch(() => {});
       wakeLock = null;
@@ -105,21 +117,8 @@ export function mountPlayer(root, { onExit }) {
     onExit();
   }
 
-  // ── Keyboard ──────────────────────────────────────────────
-  function handleKey(e) {
-    if (e.key === 'Escape') exit();
-    else if (e.key === 'ArrowRight') show.next();
-    else if (e.key === 'ArrowLeft') show.prev();
-  }
   document.addEventListener('keydown', handleKey);
-
-  document.addEventListener(
-    'fullscreenchange',
-    () => {
-      if (!document.fullscreenElement) exit();
-    },
-    { once: true }
-  );
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
 
   // ── Controls visibility (opacity-only, never display:none) ─
   function showControls() {
